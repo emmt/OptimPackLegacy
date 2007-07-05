@@ -18,7 +18,8 @@ pro op_init, name
 ;
 ; INPUTS:
 ;   NAME - Name (without extension) of the OptimPack-IDL library. Default
-;          is "OptimPack_IDL".
+;          is "OptimPack_IDL${OSTYPE}" or "OptimPack_IDL${OSTYPE}_64" for
+;          64 bit platforms (currently SunOS or Linux).
 ;
 ;
 ; OPTIONAL INPUTS:
@@ -58,13 +59,16 @@ pro op_init, name
 ;
 ; MODIFICATION HISTORY:
 ;   2003, Eric THIEBAUT.
-;   $Id$
-;   $Log$
+;   $Id: op_init.pro,v 1.1 2007/07/05 08:47:11 eric Exp eric $
+;   $Log: op_init.pro,v $
+;   Revision 1.1  2007/07/05 08:47:11  eric
+;   Initial revision
+;
 ;-
   common op_common, libname
   on_error, 2
   if n_elements(name) eq 0L then begin
-    basename = 'OptimPack_IDL'
+    basename = 'OptimPack_IDL' + getenv('OSTYPE')
   end else begin
     basename = name
   end
@@ -80,6 +84,11 @@ pro op_init, name
           if strmid(basename, 0, 1) ne '/' then prefix = './'
         end
         'sunos': begin
+          suffix = '.so'
+          if (!version.memory_bits eq 64) then suffix = '_64.so' $
+          else                                 suffix = '.so'
+        end
+        'linux': begin
           suffix = '.so'
           if (!version.memory_bits eq 64) then suffix = '_64.so' $
           else                                 suffix = '.so'
