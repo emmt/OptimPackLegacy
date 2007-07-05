@@ -21,8 +21,11 @@
 #
 #------------------------------------------------------------------------------
 #
-#	$Id: makefile,v 1.9 2001/01/15 22:27:36 scottm Exp $
-#	$Log$
+#	$Id: Makefile,v 1.1 2007/07/05 08:59:03 eric Exp eric $
+#	$Log: Makefile,v $
+#	Revision 1.1  2007/07/05 08:59:03  eric
+#	Initial revision
+#
 #------------------------------------------------------------------------------
 
 SHELL=/bin/sh
@@ -48,33 +51,34 @@ SO_EXT		=so
 
 NAME		=OptimPack_IDL
 
-
+OSTYPEVAR = `echo "${OSTYPE}"`
+MACHTYPEVAR = `echo "${MACHTYPE}"`
 
 # The following is the default entry point. This section will determine
 # what system we are on, set the correct flags and call this same makefile
 # again with the correct flags.
 
 all :
+	@echo "Building library: $(NAME)$(OSTYPEVAR)"
 	@echo "OS type detected: "`uname`
+	@echo "Variable OSTYPE : $(OSTYPEVAR)"
+	@echo "Variable MACHTYPE : $(MACHTYPEVAR)"
 	@case `uname` in \
 	"SunOS") if [ \( `/bin/uname -p` != i386 \) \
                       -a \( -x /bin/isainfo \) ]; then \
 			rm -f $(OBJS) ;\
 			make $(NAME).so \
 				"SO_EXT=so" \
-				"CC=cc -xtarget=ultra -xarch=v9" \
-				"LD=cc -xtarget=ultra -xarch=v9" \
-				"X_CFLAGS=-K pic " \
+				"X_CFLAGS=-fPIC -m64 " \
 				"X_LD_FLAGS=-G " ;\
-			mv $(NAME).so $(NAME)_64.so ;\
+			mv $(NAME).so $(NAME)$(OSTYPEVAR)_64.so ;\
 			rm -f $(OBJS) ;\
 		fi ;\
 		make $(NAME).so \
 			"SO_EXT=so" \
-			"CC=cc" \
-			"LD=cc" \
-			"X_CFLAGS=-K pic " \
+			"X_CFLAGS=-fPIC " \
 			"X_LD_FLAGS=-G " ;\
+			mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
 		;; \
 	"AIX") make $(NAME).a \
 		"SO_EXT=a" \
@@ -82,36 +86,59 @@ all :
 		"LD=cc" \
 		"X_LD_FLAGS=-bM:SRE -bnoentry"\
 		"EXPORT_FILES=$(AIX_EXPORT_FILES)" \
-		"EXPORT_FLAGS=$(AIX_EXPORT_FLAGS)";; \
+		"EXPORT_FLAGS=$(AIX_EXPORT_FLAGS)" ;\
+		mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
+		;; \
 	"HP-UX") make $(NAME).sl \
 		"SO_EXT=sl" \
 		"CC=cc" \
 		"LD=ld" \
 		"X_CFLAGS=+z -Aa -D_HPUX_SOURCE +e" \
-		"X_LD_FLAGS=-b";; \
+		"X_LD_FLAGS=-b" ;\
+		mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
+		;; \
 	"IRIX" ) make $(NAME).so \
 		"SO_EXT=so" \
 		"CC=cc" \
 		"LD=ld" \
 		"X_CFLAGS=-n32 -mips3 -KPIC" \
-		"X_LD_FLAGS=-shared -n32 -mips3";; \
+		"X_LD_FLAGS=-shared -n32 -mips3" ;\
+		mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
+		;; \
 	"IRIX64" ) make $(NAME).so \
 		"SO_EXT=so" \
 		"CC=cc" \
 		"LD=ld" \
 		"X_CFLAGS=-n32 -mips3 -KPIC" \
-		"X_LD_FLAGS=-shared -n32 -mips3";; \
+		"X_LD_FLAGS=-shared -n32 -mips3" ;\
+		mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
+		;; \
 	"OSF1" )  make $(NAME).so \
 		"SO_EXT=so" \
 		"CC=cc" \
 		"LD=ld" \
-		"X_LD_FLAGS=-S -shared";; \
-	"Linux" ) make $(NAME).so \
+		"X_LD_FLAGS=-S -shared" ;\
+		mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
+		;; \
+	"Linux" ) if [ $(MACHTYPEVAR) = x86_64 ]; then \
+			rm -f $(OBJS) ;\
+			make $(NAME).so \
+				"SO_EXT=so" \
+				"CC=gcc" \
+				"LD=ld" \
+				"X_CFLAGS=-fPIC -Wall -m64" \
+				"X_LD_FLAGS=-shared" ;\
+			mv $(NAME).so $(NAME)$(OSTYPEVAR)_64.so ;\
+			rm -f $(OBJS) ;\
+		fi ;\
+		make $(NAME).so \
 		"SO_EXT=so" \
 		"CC=gcc" \
 		"LD=ld" \
 		"X_CFLAGS=-fPIC -Wall" \
-		"X_LD_FLAGS=-shared" ;;\
+		"X_LD_FLAGS=-shared" ;\
+		mv $(NAME).so $(NAME)$(OSTYPEVAR).so ;\
+		;;\
 	*) echo "This system is not supported" ;; \
 	esac
 
