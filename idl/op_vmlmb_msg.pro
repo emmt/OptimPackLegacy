@@ -1,7 +1,7 @@
-function op_vmlmb_msg(ws)
+function op_vmlmb_msg, ws
 ;+
 ; NAME:
-;   op_vmlmb_msg
+;   OP_VMLMB_MSG
 ;
 ;
 ; PURPOSE:
@@ -57,10 +57,13 @@ function op_vmlmb_msg(ws)
 ;
 ;
 ; MODIFICATION HISTORY:
-;   $Id$
-;   $Log$
+;   $Id: op_vmlmb_msg.pro,v 1.1 2007/07/06 23:00:08 eric Exp eric $
+;   $Log: op_vmlmb_msg.pro,v $
+;   Revision 1.1  2007/07/06 23:00:08  eric
+;   Initial revision
+;
 ;-
   common op_common, libname
   on_error, 2
-  return CALL_EXTERNAL(libname, 'op_idl_vmlmb_msg', size(ws), ws, /S_VALUE)
+  return, CALL_EXTERNAL(libname, 'op_idl_vmlmb_msg', size(ws), ws, /S_VALUE)
 end
