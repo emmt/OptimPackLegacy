@@ -25,8 +25,11 @@
  *
  *-----------------------------------------------------------------------------
  *
- *	$Id$
- *	$Log$
+ *	$Id: op_idl.c,v 1.1 2007/07/06 23:27:02 eric Exp eric $
+ *	$Log: op_idl.c,v $
+ *	Revision 1.1  2007/07/06 23:27:02  eric
+ *	Initial revision
+ *
  *-----------------------------------------------------------------------------
  */
 
@@ -233,7 +236,7 @@ idl_long_t op_idl_vmlmb_next(int argc, void *argv[])
   /* Get optional ACTIVE array. */
   if (argc >= 10) {
     size = (idl_long_t *)argv[8];
-    addr = argv[5];
+    addr = argv[9];
     switch (GET_TYPE(size)) {
     case IDL_TYP_BYTE:
       if (GET_NELEMENTS(size) != n) {
@@ -255,8 +258,8 @@ idl_long_t op_idl_vmlmb_next(int argc, void *argv[])
 
   /* Get optional H array. */
   if (argc >= 12) {
-    size = (idl_long_t *)argv[8];
-    addr = argv[5];
+    size = (idl_long_t *)argv[10];
+    addr = argv[11];
     switch (GET_TYPE(size)) {
     case IDL_TYP_DOUBLE:
       if (GET_NELEMENTS(size) != n) {
