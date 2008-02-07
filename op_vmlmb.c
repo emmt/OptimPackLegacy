@@ -27,9 +27,10 @@
  *
  *-----------------------------------------------------------------------------
  *
- *	$Id$
- *	$Log$
- *
+ *	$Id: op_vmlmb.c,v 1.1 2003/03/17 08:58:24 eric Exp eric $
+ *	$Log: op_vmlmb.c,v $
+ *	Revision 1.1  2003/03/17 08:58:24  eric
+ *	Initial revision
  *-----------------------------------------------------------------------------
  */
 
@@ -69,7 +70,8 @@
 #define INDEX_OF_WORK   24 /* must be the last one */
 /* DSAVE must have at least: 24 + 2×M + N + 2×N×M elements */
 
-#define SET_TASK(val, str) (op_mcopy("op_vmlmb_next: " str, csave), task=(val))
+#define SET_TASK(val, str) \
+    (op_mcopy("op_vmlmb_first: " str, csave), task=(val))
 
 int op_vmlmb_first(op_integer_t n, op_integer_t m,
 		   double fmin, double fatol, double frtol,
@@ -103,11 +105,19 @@ int op_vmlmb_first(op_integer_t n, op_integer_t m,
 }
 #undef SET_TASK
 
+/*---------------------------------------------------------------------------*/
+
+static int check_active(op_integer_t n, op_logical_t active[], const double h[],
+			int *task, char csave[]);
+/* Check H and ACTIVE arrays, possibly fix ACTIVE, returns non-zero
+   in case of error. */
+
 #define S(K)     &s[(K)*n]
 #define Y(K)     &y[(K)*n]
 #define SET_TASK(val, str) (op_mcopy("op_vmlmb_next: " str, csave), task=(val))
 
-int op_vmlmb_next(double x[], double *f, double g[], const int active[],
+int op_vmlmb_next(double x[], double *f, double g[],
+		  op_logical_t active[], const double h[],
 		  char csave[], op_integer_t isave[], double dsave[])
 {
   const double zero = 0.0;
@@ -142,7 +152,6 @@ int op_vmlmb_next(double x[], double *f, double g[], const int active[],
   double *s   = x0 + n;
   double *y   = s + n*m;
   double *ptr;
-  double q;
   int info;
   op_integer_t i, j, k;
 
@@ -180,12 +189,17 @@ int op_vmlmb_next(double x[], double *f, double g[], const int active[],
     mark = 0;  /* index of current direction */
     mp = 0;    /* number of saved directions */
   steepest:
+    if (check_active(n, active, h, &task, csave)) goto done;
     op_dcopy_active(n, g, S(mark), active); /* steepest ascent */
-    q = op_dnrm2(n, S(mark)); /* same as |g| but account for active */
-    if (q > zero) {
-      op_dscal(n, 1.0/q, S(mark));
-      gd = -q;
+    if (h) {
+      for (ptr=S(mark), i=0 ; i<n ; ++i) ptr[i] *= h[i];
+      gd = -op_ddot(n, g, S(mark));
     } else {
+      /* no preconditioning, use normalized steepest ascent */
+      gd = -op_dnrm2(n, S(mark)); /* same as -|g| but account for active */
+      if (gd < zero) op_dscal(n, -1.0/gd, S(mark));
+    }
+    if (gd >= zero) {
       SET_TASK(OP_TASK_CONV, "local minimum found");
       goto done;
     }
@@ -233,6 +247,8 @@ int op_vmlmb_next(double x[], double *f, double g[], const int active[],
       double *v = x0;
       double gamma = zero;
       op_integer_t mm = mark + m;
+
+      if (check_active(n, active, h, &task, csave)) goto done;
       op_dcopy_active(n, g, v, active);
       for (k=0 ; k<mp ; ++k) {
 	j = (mm - k)%m;
@@ -243,7 +259,10 @@ int op_vmlmb_next(double x[], double *f, double g[], const int active[],
 	  if (! gamma) gamma = rho[j]/op_ddot_active(n, Y(j), Y(j), active);
 	}
       }
-      if (gamma) {
+      if (h) {
+	/* Use preconditioning. */
+	for (i=0 ; i<n ; ++i) v[i] *= h[i];
+      } else if (gamma) {
 	/* Apply initial H (i.e. just scale V) and perform the second stage of
 	   the 2-loop recursion. */
 	op_dscal(n, gamma, v);
@@ -376,6 +395,38 @@ int op_vmlmb_next(double x[], double *f, double g[], const int active[],
 #undef SET_TASK
 #undef Y
 #undef S
+
+/*---------------------------------------------------------------------------*/
+
+static int check_active(op_integer_t n, op_logical_t active[],
+			const double h[], int *task, char csave[])
+{
+  if (h) {
+    const double zero = 0.0;
+    op_integer_t i;
+    if (active) {
+      /* fix ACTIVE array */
+      for (i=0 ; i<n ; ++i) {
+	if (active[i] && h[i] <= zero) {
+	  active[i] = 0;
+	}
+      }
+    } else {
+      /* check that H is positive definite */
+      for (i=0 ; i<n ; ++i) {
+	if (h[i] <= zero) {
+	  op_mcopy("op_vmlmb_next: H is not positive definite", csave);
+	  *task = OP_TASK_ERROR;
+	  return 1;
+	}
+      }
+
+    }
+  }
+  return 0;
+}
+
+/*---------------------------------------------------------------------------*/
 
 double op_vmlmb_set_fmin(const char csave[], const op_integer_t isave[],
 			 double dsave[], double new_value)
