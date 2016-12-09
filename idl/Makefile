@@ -21,8 +21,14 @@
 #
 #------------------------------------------------------------------------------
 #
-#	$Id: Makefile,v 1.1 2007/07/05 08:59:03 eric Exp eric $
+#	$Id: Makefile,v 1.2 2007/07/05 09:04:03 eric Exp $
 #	$Log: Makefile,v $
+#	Revision 1.2  2007/07/05 09:04:03  eric
+#	Integrate changes by Laurent Mugnier (ONERA):
+#	 - library name is OptimPack_IDL$OSTYPE.so (or OptimPack_IDL$OSTYPE_64.so)
+#	   instead of the original OptimPack_IDL.so
+#	 - linux 64 bit platforms handled (64 and 32 bit libraries generated)
+#
 #	Revision 1.1  2007/07/05 08:59:03  eric
 #	Initial revision
 #

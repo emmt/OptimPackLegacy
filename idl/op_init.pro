@@ -59,8 +59,14 @@ pro op_init, name
 ;
 ; MODIFICATION HISTORY:
 ;   2003, Eric THIEBAUT.
-;   $Id: op_init.pro,v 1.1 2007/07/05 08:47:11 eric Exp eric $
+;   $Id: op_init.pro,v 1.2 2007/07/05 08:53:55 eric Exp $
 ;   $Log: op_init.pro,v $
+;   Revision 1.2  2007/07/05 08:53:55  eric
+;   Integrate changes by Laurent Mugnier (ONERA):
+;     - Major change: changed default library basename from 'OptimPack_IDL'
+;       to 'OptimPack_IDL${OSTYPE}' for multi-platform use.
+;     - Added support for Linux 64 bits platforms.
+;
 ;   Revision 1.1  2007/07/05 08:47:11  eric
 ;   Initial revision
 ;

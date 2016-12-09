@@ -57,8 +57,11 @@ function op_vmlmb_msg, ws
 ;
 ;
 ; MODIFICATION HISTORY:
-;   $Id: op_vmlmb_msg.pro,v 1.1 2007/07/06 23:00:08 eric Exp eric $
+;   $Id: op_vmlmb_msg.pro,v 1.2 2007/07/06 23:13:07 eric Exp $
 ;   $Log: op_vmlmb_msg.pro,v $
+;   Revision 1.2  2007/07/06 23:13:07  eric
+;   Syntax errors fixed by Laurent Mugnier.
+;
 ;   Revision 1.1  2007/07/06 23:00:08  eric
 ;   Initial revision
 ;

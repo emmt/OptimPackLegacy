@@ -191,8 +191,11 @@ function op_vmlmb, x, f, g, ws, active=active, h=h
 ;
 ; MODIFICATION HISTORY:
 ;   2003, Eric THIEBAUT.
-;   $Id$
-;   $Log$
+;   $Id: op_vmlmb.pro,v 1.1 2007/07/11 05:50:35 eric Exp $
+;   $Log: op_vmlmb.pro,v $
+;   Revision 1.1  2007/07/11 05:50:35  eric
+;   Initial revision
+;
 ;-
   common op_common, libname
   on_error, 2

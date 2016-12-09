@@ -25,8 +25,12 @@
  *
  *-----------------------------------------------------------------------------
  *
- *	$Id: op_idl.c,v 1.1 2007/07/06 23:27:02 eric Exp eric $
+ *	$Id: op_idl.c,v 1.2 2007/07/06 23:36:51 eric Exp eric $
  *	$Log: op_idl.c,v $
+ *	Revision 1.2  2007/07/06 23:36:51  eric
+ *	Bug fixes by Laurent Mugnier in parsing of arguments in
+ *	function op_idl_vmlmb_next.
+ *
  *	Revision 1.1  2007/07/06 23:27:02  eric
  *	Initial revision
  *
@@ -35,6 +39,8 @@
 
 #include "op_idl.h"
 #include "optimpack.h"
+
+#error "IDL interface not up to date"
 
 /*---------------------------------------------------------------------------*/
 /* MACROS */
@@ -103,7 +109,7 @@ const char *op_idl_last_error(int argc, void *argv[])
 idl_long_t op_idl_vmlmb_first(int argc, void *argv[])
 {
   idl_long_t   n, m, task, nws;
-  idl_double_t fmin, frtol, fatol, sftol, sgtol, sxtol;
+  idl_double_t fmin, frtol, fatol, sftol, sgtol, sxtol, epsilon, costheta;
   idl_long_t *isave;
   idl_double_t *dsave;
   void *ws;
@@ -126,12 +132,14 @@ idl_long_t op_idl_vmlmb_first(int argc, void *argv[])
     if (! last_error) last_error = "insufficient space in workspace array";
     return -1;
   }
-  fmin  = ((double *)ws)[0];
-  frtol = ((double *)ws)[1];
-  fatol = ((double *)ws)[2];
-  sftol = ((double *)ws)[3];
-  sgtol = ((double *)ws)[4];
-  sxtol = ((double *)ws)[5];
+  fmin     = ((double *)ws)[0];
+  frtol    = ((double *)ws)[1];
+  fatol    = ((double *)ws)[2];
+  sftol    = ((double *)ws)[3];
+  sgtol    = ((double *)ws)[4];
+  sxtol    = ((double *)ws)[5];
+  epsilon  = ((double *)ws)[6];
+  costheta = ((double *)ws)[7];
 
 #if 0
   fprintf(stderr, "NSW   = %d\n", (int)nws);
@@ -151,7 +159,10 @@ idl_long_t op_idl_vmlmb_first(int argc, void *argv[])
 
   /* Call op_vmlmb_first and check returned value. */
   task = op_vmlmb_first(n, m,
-			fmin, fatol, frtol, sftol, sgtol, sxtol,
+#warning FMIN not used here
+			/* fmin, */
+			fatol, frtol, sftol, sgtol, sxtol,
+			epsilon, costheta,
 			csave, isave, dsave);
   if (task != OP_TASK_FG) {
     save_error(csave);
