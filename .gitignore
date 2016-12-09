@@ -1,0 +1,15 @@
+*~
+*.bak
+*.o
+*.lo
+*.la
+lib*.a
+lib*.so
+*.dll
+*.tar.gz
+*.txz
+*.tar.bz2
+*.zip
+*.log
+RCS/
+devel/
