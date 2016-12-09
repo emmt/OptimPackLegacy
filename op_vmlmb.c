@@ -6,7 +6,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- *      Copyright (c) 2003, Eric THIEBAUT.
+ *      Copyright (c) 2003-2009, Eric THIEBAUT.
  *
  *	This file is part of OptimPack.
  *
@@ -27,10 +27,15 @@
  *
  *-----------------------------------------------------------------------------
  *
- *	$Id: op_vmlmb.c,v 1.1 2003/03/17 08:58:24 eric Exp eric $
+ *	$Id: op_vmlmb.c,v 1.2 2008/02/07 09:56:19 eric Exp eric $
  *	$Log: op_vmlmb.c,v $
+ *	Revision 1.2  2008/02/07 09:56:19  eric
+ *	 - Saved this version corresponding to OptimPack release 1.2 prior
+ *	   to changes for next release.
+ *
  *	Revision 1.1  2003/03/17 08:58:24  eric
  *	Initial revision
+ *
  *-----------------------------------------------------------------------------
  */
 
@@ -46,36 +51,53 @@
    WITH/WITHOUT BOUND CONSTRAINTS */
 
 /* Indices 0-1 in ISAVE are reserved for op_cshrc. */
-#define INDEX_OF_TASK   2
-#define INDEX_OF_STAGE  3
-#define INDEX_OF_M      4
-#define INDEX_OF_N      5
-#define INDEX_OF_ITER   6
-#define INDEX_OF_MARK   7
-#define INDEX_OF_MP     8
+#define INDEX_OF_TASK       2
+#define INDEX_OF_STAGE      3
+#define INDEX_OF_M          4
+#define INDEX_OF_N          5
+#define INDEX_OF_ITER       6
+#define INDEX_OF_MARK       7
+#define INDEX_OF_MP         8
+#define INDEX_OF_FLAGS      9
+#define INDEX_OF_NEVALS    10
+#define INDEX_OF_NRESTARTS 11
+#if (OP_VMLMB_ISAVE_NUMBER != INDEX_OF_NRESTARTS + 1)
+# error bad ISAVE settings
+#endif
 
 /* Indices 0-11 in ISAVE are reserved for op_cshrc. */
-#define INDEX_OF_SFTOL  12
-#define INDEX_OF_SGTOL  13
-#define INDEX_OF_SXTOL  14
-#define INDEX_OF_FRTOL  15
-#define INDEX_OF_FATOL  16
-#define INDEX_OF_FMIN   17
-#define INDEX_OF_F0     18
-#define INDEX_OF_GD     19
-#define INDEX_OF_GD0    20
-#define INDEX_OF_STP    21
-#define INDEX_OF_STPMIN 22
-#define INDEX_OF_STPMAX 23
-#define INDEX_OF_WORK   24 /* must be the last one */
-/* DSAVE must have at least: 24 + 2×M + N + 2×N×M elements */
+#define INDEX_OF_SFTOL    12
+#define INDEX_OF_SGTOL    13
+#define INDEX_OF_SXTOL    14
+#define INDEX_OF_FRTOL    15
+#define INDEX_OF_FATOL    16
+#define INDEX_OF_FMIN     17
+#define INDEX_OF_F0       18
+#define INDEX_OF_GD       19
+#define INDEX_OF_GD0      20
+#define INDEX_OF_STP      21
+#define INDEX_OF_STPMIN   22
+#define INDEX_OF_STPMAX   23
+#define INDEX_OF_EPSILON  24
+#define INDEX_OF_COSTHETA 25
+#define INDEX_OF_DELTA    26
+#define INDEX_OF_WORK     27 /* must be the last one */
+#if (OP_VMLMB_DSAVE_NUMBER(0,0) != INDEX_OF_WORK)
+# error bad DSAVE settings
+#endif
+
+#define FLAG(n)                          (1 << (n))
+#define FLAG_IS_SET(value, flag)         (((value) & (flag)) != 0)
+#define FLAG_FMIN                        FLAG(0)
+#define FLAG_DELTA                       FLAG(1)
 
 #define SET_TASK(val, str) \
     (op_mcopy("op_vmlmb_first: " str, csave), task=(val))
 
 int op_vmlmb_first(op_integer_t n, op_integer_t m,
-		   double fmin, double fatol, double frtol,
+		   double fatol, double frtol,
 		   double sftol, double sgtol, double sxtol,
+		   double epsilon, double costheta,
 		   char csave[], op_integer_t isave[], double dsave[])
 {
   int task = OP_TASK_FG;
@@ -90,17 +112,37 @@ int op_vmlmb_first(op_integer_t n, op_integer_t m,
   if (sgtol <= 0.0) return SET_TASK(OP_TASK_ERROR, "SGTOL <= 0");
   if (sgtol >= 1.0) return SET_TASK(OP_TASK_ERROR, "SGTOL >= 1");
   if (sftol >= sgtol) return SET_TASK(OP_TASK_ERROR, "SFTOL >= SGTOL");
+  if (epsilon <= 0.0) return SET_TASK(OP_TASK_ERROR, "EPSILON <= 0");
+  if (costheta < 0.0) return SET_TASK(OP_TASK_ERROR, "COSTHETA < 0");
+  if (costheta >= 1.0) return SET_TASK(OP_TASK_ERROR, "COSTHETA >= 1");
 
-  isave[INDEX_OF_TASK]  = OP_TASK_FG;
-  isave[INDEX_OF_STAGE] = 0;
-  isave[INDEX_OF_M]     = m;
-  isave[INDEX_OF_N]     = n;
-  dsave[INDEX_OF_FMIN]  = fmin;
-  dsave[INDEX_OF_FRTOL] = frtol;
-  dsave[INDEX_OF_FATOL] = fatol;
-  dsave[INDEX_OF_SFTOL] = sftol;
-  dsave[INDEX_OF_SGTOL] = sgtol;
-  dsave[INDEX_OF_SXTOL] = sxtol;
+  isave[INDEX_OF_TASK]      = OP_TASK_FG;
+  isave[INDEX_OF_STAGE]     = 0L;
+  isave[INDEX_OF_M]         = m;
+  isave[INDEX_OF_N]         = n;
+  isave[INDEX_OF_ITER]      = 0L;
+  isave[INDEX_OF_MARK]      = 0L;
+  isave[INDEX_OF_MP]        = 0L;
+  isave[INDEX_OF_FLAGS]     = 0L;
+  isave[INDEX_OF_NEVALS]    = 0L;
+  isave[INDEX_OF_NRESTARTS] = 0L;
+
+  dsave[INDEX_OF_SFTOL]     = sftol;
+  dsave[INDEX_OF_SGTOL]     = sgtol;
+  dsave[INDEX_OF_SXTOL]     = sxtol;
+  dsave[INDEX_OF_FRTOL]     = frtol;
+  dsave[INDEX_OF_FATOL]     = fatol;
+  dsave[INDEX_OF_FMIN]      = 0.0;
+  dsave[INDEX_OF_F0]        = 0.0;
+  dsave[INDEX_OF_GD]        = 0.0;
+  dsave[INDEX_OF_GD0]       = 0.0;
+  dsave[INDEX_OF_STP]       = 0.0;
+  dsave[INDEX_OF_STPMIN]    = 0.0;
+  dsave[INDEX_OF_STPMAX]    = 0.0;
+  dsave[INDEX_OF_EPSILON]   = epsilon;
+  dsave[INDEX_OF_COSTHETA]  = costheta;
+  dsave[INDEX_OF_DELTA]     = 0.0;
+
   return isave[INDEX_OF_TASK];
 }
 #undef SET_TASK
@@ -125,26 +167,37 @@ int op_vmlmb_next(double x[], double *f, double g[],
   /* Get local variables.  (Note: depending on the value of STAGE, it is
      possible to restore only _some_ of theses variables, but this would
      result in a less readable code with negligible speedup gain.) */
-  int          task  = isave[INDEX_OF_TASK];
-  int          stage = isave[INDEX_OF_STAGE];
-  op_integer_t m     = isave[INDEX_OF_M];
-  op_integer_t n     = isave[INDEX_OF_N];
-  op_integer_t iter  = isave[INDEX_OF_ITER];
-  op_integer_t mark  = isave[INDEX_OF_MARK];
-  op_integer_t mp    = isave[INDEX_OF_MP];
+  int          task      = isave[INDEX_OF_TASK];
+  int          stage     = isave[INDEX_OF_STAGE];
+  op_integer_t m         = isave[INDEX_OF_M];
+  op_integer_t n         = isave[INDEX_OF_N];
+  op_integer_t iter      = isave[INDEX_OF_ITER];
+  op_integer_t mark      = isave[INDEX_OF_MARK];
+  op_integer_t mp        = isave[INDEX_OF_MP];
+  op_integer_t flags     = isave[INDEX_OF_FLAGS];
+  op_integer_t nevals    = isave[INDEX_OF_NEVALS];
+  op_integer_t nrestarts = isave[INDEX_OF_NRESTARTS];
+  int          have_fmin = ((flags & FLAG_FMIN) != 0);
+  int          delta_set = ((flags & FLAG_DELTA) != 0);
 
-  double sftol  = dsave[INDEX_OF_SFTOL];
-  double sgtol  = dsave[INDEX_OF_SGTOL];
-  double sxtol  = dsave[INDEX_OF_SXTOL];
-  double fmin   = dsave[INDEX_OF_FMIN];
-  double frtol  = dsave[INDEX_OF_FRTOL];
-  double fatol  = dsave[INDEX_OF_FATOL];
-  double f0     = dsave[INDEX_OF_F0];
-  double gd     = dsave[INDEX_OF_GD];
-  double gd0    = dsave[INDEX_OF_GD0];
-  double stp    = dsave[INDEX_OF_STP];
-  double stpmin = dsave[INDEX_OF_STPMIN];
-  double stpmax = dsave[INDEX_OF_STPMAX];
+  double sftol    = dsave[INDEX_OF_SFTOL];
+  double sgtol    = dsave[INDEX_OF_SGTOL];
+  double sxtol    = dsave[INDEX_OF_SXTOL];
+  double fmin     = (have_fmin ? dsave[INDEX_OF_FMIN] : zero);
+  double frtol    = dsave[INDEX_OF_FRTOL];
+  double fatol    = dsave[INDEX_OF_FATOL];
+  double f0       = dsave[INDEX_OF_F0];
+  double gd       = dsave[INDEX_OF_GD];
+  double gd0      = dsave[INDEX_OF_GD0];
+  double stp      = dsave[INDEX_OF_STP];
+  double stpmin   = dsave[INDEX_OF_STPMIN];
+  double stpmax   = dsave[INDEX_OF_STPMAX];
+  double epsilon  = dsave[INDEX_OF_EPSILON];
+  double costheta = dsave[INDEX_OF_COSTHETA];
+  double delta    = (delta_set ? dsave[INDEX_OF_DELTA] : zero);
+  /*double delta    = dsave[INDEX_OF_DELTA];*/
+
+  double gpnorm, xnorm, snorm;
 
   double *alpha = dsave + INDEX_OF_WORK;
   double *rho = alpha + m;
@@ -158,156 +211,187 @@ int op_vmlmb_next(double x[], double *f, double g[],
   /*
    * Differences with original FORTRAN version:
    *
-   *   (5) The effective step is used instead of the search direction
-   *       times the step size (useful, e.g., when parameter constraints
-   *       are imposed by projections).
+   *   (5) The effective step is used instead of the search direction times
+   *       the step size (useful, e.g., when parameter constraints are imposed
+   *       by projections or when rounding or truncation errors dominate).
    *
    *   (6) It is possible to use an active subset of parameters, e.g. to apply
    *       bound constraints.
    *
    *   (7) Discard pairs for which RHO = S'.Y <= 0 (i.e. H must be positive
    *       definite).
-   */
-
-
-  /* STAGE is: 0 - first entry
+   *
+   * STAGE is: 0 - first entry
    *           1 - start line search
    *           2 - line search in progress
-   *           3 - line search converged */
+   *           3 - line search converged
+   *
+   * S(MARK) = -D(k) where D(k) is the k-th search direction and MARK is
+   * current iteration index (modulo M).
+   */
 
-
-  /* S(MARK) = -D(k) where D(k) is the k-th search direction */
+  if (task == OP_TASK_FG) {
+    ++nevals;
+  }
 
   if (stage == 0) {
     /* First search direction is the (normalized) steepest descent. */
-    if (*f <= fmin) {
+    if (have_fmin && *f <= fmin) {
       SET_TASK(OP_TASK_ERROR, "initial F <= FMIN");
       goto done;
     }
-    iter = 0;  /* number of successful iterations */
+    iter = 0L;  /* number of successful iterations */
+    nevals = 1L;
+    nrestarts = 0L;
   restart:
     mark = 0;  /* index of current direction */
     mp = 0;    /* number of saved directions */
-  steepest:
-    if (check_active(n, active, h, &task, csave)) goto done;
+    if (check_active(n, active, h, &task, csave) != 0) goto done;
     op_dcopy_active(n, g, S(mark), active); /* steepest ascent */
-    if (h) {
-      for (ptr=S(mark), i=0 ; i<n ; ++i) ptr[i] *= h[i];
-      gd = -op_ddot(n, g, S(mark));
-    } else {
-      /* no preconditioning, use normalized steepest ascent */
-      gd = -op_dnrm2(n, S(mark)); /* same as -|g| but account for active */
-      if (gd < zero) op_dscal(n, -1.0/gd, S(mark));
-    }
-    if (gd >= zero) {
+    gpnorm = op_dnrm2(n, S(mark)); /* norm of the projected gradient */
+    if (gpnorm == zero) {
       SET_TASK(OP_TASK_CONV, "local minimum found");
       goto done;
     }
+    if (h == NULL) {
+      /* No preconditioning, use scaled steepest ascent. */
+      xnorm = op_dnrm2(n, x);
+      if (xnorm > zero) { /* FIXME: use parameter (not constant) and better test */
+	snorm = 1E-2*xnorm;
+      } else {
+	snorm = 1.0;
+      }
+      op_dscal(n, snorm/gpnorm, S(mark));
+      gd = -snorm*gpnorm;
+    } else {
+      /* Use diagonal preconditioner to compute initial search direction. */ 
+      for (ptr = S(mark), i = 0; i < n; ++i) {
+	ptr[i] *= h[i];
+      }
+      gd = -op_ddot(n, g, S(mark));
+      if (gd >= zero) {
+	SET_TASK(OP_TASK_ERROR, "preconditioner is not positive definite");
+	goto done;
+      }
+    }
     stage = 1; /* set STAGE to initialize the line search */
 
-  } else {
+  } else if (stage == 3) {
 
-    if (stage == 3) {
-      /* Previous step was successful.  Compute new search direction
-       * H(k).g(k) based on the two-loop recursion L-BFGS formula.  H(k) is
-       * the limited memory BFGS approximation of the inverse Hessian, g(k)
-       * is the gradient at k-th step.  H(k) is approximated by using the M
-       * last pairs (s, y) where:
-       *
-       *   s(j) = x(j+1) - x(j)
-       *   y(j) = g(j+1) - g(j)
-       *
-       * The two-loop recursion algorithm reads:
-       *
-       *   1- start with current gradient:
-       *        v := g(k)
-       *
-       *   2- for j = k-1, ..., k-m
-       *        rho(j) = s(j)'.y(j)           (save rho(j))
-       *        alpha(j) = (s(j)'.v)/rho(j)   (save alpha(j))
-       *        v := v - alpha(j) y(j)
-       *
-       *   3- apply approximation of inverse k-th Hesian:
-       *        v := H0(k).v
-       *      for instance:
-       *        v := (rho(k-1)/(y(k-1)'.y(k-1))) v
-       *
-       *   4- for j = k-m, ..., k-1
-       *        v := v + (alpha(j) - (y(j)'.v)/rho(j)) s(j)
-       *
-       * Note: in fact, this program saves -S and -Y, but by looking at
-       * above relations it is clear that this change of sign:
-       *  - has no influence on RHO, and dot products between S and Y;
-       *  - changes the sign of ALPHA but not that of ALPHA(j) times
-       *    S(j) or Y(j);
-       * the two-loop recursion therefore involves the same equations
-       * with:     s(j) = x(j+1) - x(j)  and  y(j) = g(j+1) - g(j)
-       * or with:  s(j) = x(j) - x(j+1)  and  y(j) = g(j) - g(j+1).
-       */
-      double *v = x0;
-      double gamma = zero;
-      op_integer_t mm = mark + m;
+    /* Previous step was successful.  Compute new search direction H(k).g(k)
+     * based on the two-loop recursion L-BFGS formula.  H(k) is the limited
+     * memory BFGS approximation of the inverse Hessian, g(k) is the
+     * gradient at k-th step.  H(k) is approximated by using the M last
+     * pairs (s, y) where:
+     *
+     *   s(j) = x(j+1) - x(j)
+     *   y(j) = g(j+1) - g(j)
+     *
+     * The two-loop recursion algorithm writes:
+     *
+     *   1- start with current gradient:
+     *        v := g(k)
+     *
+     *   2- for j = k-1, ..., k-m
+     *        rho(j) = s(j)'.y(j)           (save rho(j))
+     *        alpha(j) = (s(j)'.v)/rho(j)   (save alpha(j))
+     *        v := v - alpha(j) y(j)
+     *
+     *   3- apply approximation of inverse k-th Hessian:
+     *        v := H0(k).v
+     *      for instance:
+     *        v := (rho(k-1)/(y(k-1)'.y(k-1))) v
+     *
+     *   4- for j = k-m, ..., k-1
+     *        v := v + (alpha(j) - (y(j)'.v)/rho(j)) s(j)
+     *
+     * Note: in fact, this program saves -S and -Y, but by looking at
+     * above relations it is clear that this change of sign:
+     *  - has no influence on RHO, and dot products between S and Y;
+     *  - changes the sign of ALPHA but not that of ALPHA(j) times
+     *    S(j) or Y(j);
+     * the two-loop recursion therefore involves the same equations
+     * with:     s(j) = x(j+1) - x(j)  and  y(j) = g(j+1) - g(j)
+     * or with:  s(j) = x(j) - x(j+1)  and  y(j) = g(j) - g(j+1).
+     */
+    double *v = x0;
+    double gamma = zero;
+    op_integer_t mm = mark + m;
 
-      if (check_active(n, active, h, &task, csave)) goto done;
-      op_dcopy_active(n, g, v, active);
-      for (k=0 ; k<mp ; ++k) {
-	j = (mm - k)%m;
-	if (active) rho[j] = op_ddot_active(n, S(j), Y(j), active);
-	if (rho[j] > zero) {
-	  alpha[j] = op_ddot(n, S(j), v)/rho[j];
-	  op_daxpy_active(n, -alpha[j], Y(j), v, active);
-	  if (! gamma) gamma = rho[j]/op_ddot_active(n, Y(j), Y(j), active);
-	}
+    if (check_active(n, active, h, &task, csave) != 0) goto done;
+    op_dcopy_active(n, g, v, active);
+    for (k = 0; k < mp; ++k) {
+      j = (mm - k)%m;
+      if (active != NULL) rho[j] = op_ddot_active(n, S(j), Y(j), active);
+      if (rho[j] <= zero) continue; /* FIXME: should be relative to |y|^2 or |s|^2 */
+      alpha[j] = op_ddot(n, S(j), v)/rho[j];
+      op_daxpy_active(n, -alpha[j], Y(j), v, active);
+      if (gamma <= zero) gamma = rho[j]/op_ddot_active(n, Y(j), Y(j), active);
+    }
+    if (h != NULL) {
+      /* Apply diagonal preconditioner. */
+      for (i = 0; i < n; ++i) {
+	v[i] *= h[i];
       }
-      if (h) {
-	/* Use preconditioning. */
-	for (i=0 ; i<n ; ++i) v[i] *= h[i];
-      } else if (gamma) {
-	/* Apply initial H (i.e. just scale V) and perform the second stage of
-	   the 2-loop recursion. */
-	op_dscal(n, gamma, v);
-      } else {
-	/* All correction pairs are invalid: fallback to use the steepest
-	   descent direction. */
-	fprintf(stderr, "WARNING: %s\n",
-		"no valid correction pair (use steepest descent direction)");
-	goto steepest;
-      }
-      for (k=mp-1 ; k>=0 ; --k) {
-	j = (mm - k)%m;
-	if (rho[j] <= zero) continue;
-	op_daxpy_active(n, alpha[j] -  op_ddot(n, Y(j), v)/rho[j],
-			S(j), v, active);
-      }
-
-      /* Save search direction. */
-      mark = (mark + 1)%m;
-      op_dcopy(n, v, S(mark));
-
-      /* Set STAGE to initialize the line search. */
-      stage = 1;
+    } else if (gamma > zero) {
+      /* Apply initial H (i.e. just scale V) and perform the second stage of
+	 the 2-loop recursion. */
+      op_dscal(n, gamma, v);
+    } else {
+      /* All correction pairs are invalid: restart the BFGS recursion. */
+      ++nrestarts;
+      goto restart;
+    }
+    for (k = mp - 1; k >= 0; --k) {
+      j = (mm - k)%m;
+      if (rho[j] <= zero) continue; /* FIXME: see above */
+      op_daxpy_active(n, alpha[j] - op_ddot(n, Y(j), v)/rho[j],
+		      S(j), v, active);
+    }
+    
+    /* Compute dot product of gradient and search direction. */
+    gd = -op_ddot(n, g, v); /* FIXME: should be GP? */
+    if (gd >= zero) {
+      /* L-BFGS recursion yields a search direction which is not a descent.
+	 We therefore restart the algorithm with steepest descent. */
+      ++nrestarts;
+      goto restart;
     }
 
-    /* Compute derivative with respect to step size STP. */
-    gd = -op_ddot(n, g, S(mark));
+    /* Save anti-search direction (in place of oldest memorized S). */
+    mark = (mark + 1)%m;
+    op_dcopy(n, v, S(mark));
+
+    /* Set STAGE to initialize the line search. */
+    stage = 1;
+
+  } else /* FIXME: check stage? */ {
+    /* Line search in progress: compute derivative with respect to step
+       size. */
+    gd = -op_ddot(n, g, S(mark)); /* FIXME: should be GP? */
   }
 
   if (stage == 1) {
     /* Set variables so as to initialize the line search subroutine. */
-    if (gd >= zero) {
-      /* L-BFGS recursion yields a search direction which is not a descent.
-         We therefore restart the algorithm with steepest descent. */
-      fprintf(stderr, "WARNING: %s\n",
-	      "not a descent direction (algorithm restarted)");
-      goto restart;
-    }
     f0 = *f;
     gd0 = gd;
     stpmin = zero;
-    stpmax = (fmin - f0)/(sgtol*gd0);
+#if 1
+    stpmax = 1E10; /* FIXME: use a suitable value */
+#else
+    if (have_fmin) {
+      stpmax = (fmin - f0)/(sgtol*gd0);
+    } else {
+      double temp = fabs(f0);
+      if (temp < 1.0) {
+	temp = 1.0;
+      }
+      stpmax = temp/(sgtol*gd0); 
+    }
+#endif
     stp = OP_MIN(1.0, stpmax);
     op_dcopy(n, x, x0);      /* save parameters */
-    op_dcopy(n, g, Y(mark)); /* save gradient */
+    op_dcopy(n, g, Y(mark)); /* save gradient in place of oldest Y */
     stage = 2;
     task = OP_TASK_START; /* set TASK so as to start line search */
   } else {
@@ -316,7 +400,7 @@ int op_vmlmb_next(double x[], double *f, double g[],
 
   if (stage == 2) {
     /* Determine the line search parameter. */
-    if (*f < fmin) {
+    if (have_fmin && *f < fmin) {
       SET_TASK(OP_TASK_WARN, "F < FMIN");
     } else {
       /* Call line search iterator. */
@@ -324,19 +408,23 @@ int op_vmlmb_next(double x[], double *f, double g[],
 		      csave, isave, dsave);
       if (info == 1) {
         /* Compute the new iterate. */
-	for (ptr=S(mark), i=0 ; i<n ; ++i) x[i] = x0[i] - stp*ptr[i];
+	for (ptr = S(mark), i = 0; i < n; ++i) {
+	  /* FIXME: use DCOPY and DAXPY */
+	  x[i] = x0[i] - stp*ptr[i];
+	}
       } else if (info == 2 || info == 5) {
 	/* Line search has converged. */
 	++iter;
         if (mp < m) ++mp;
 	stage = 3;
 
-        /* Compute the step and gradient change.  Note: we always compute
-	   the effective step (parameter difference) to account for bound
-	   constraints and, at least, numerical rounding errors. */
-	for (ptr=Y(mark), i=0 ; i<n ; ++i) ptr[i] -= g[i];
-	for (ptr=S(mark), i=0 ; i<n ; ++i) ptr[i] = x0[i] - x[i];
-	if (! active) rho[mark] = op_ddot(n, Y(mark), S(mark));
+        /* Compute the step and gradient change.  Note: we always compute the
+	   effective step (parameter difference) to account for bound
+	   constraints and, at least, numerical rounding or truncation
+	   errors. */
+	for (ptr = Y(mark), i = 0; i < n; ++i) ptr[i] -= g[i];
+	for (ptr = S(mark), i = 0; i < n; ++i) ptr[i] = x0[i] - x[i];
+	if (active == NULL) rho[mark] = op_ddot(n, Y(mark), S(mark));
 
 	/* Test for global convergence otherwise set TASK to signal a new
 	   iterate.  Set STAGE to compute a new search direction. */
@@ -369,26 +457,35 @@ int op_vmlmb_next(double x[], double *f, double g[],
 
   /* Save local variables (but constant ones) and return TASK. */
  done:
-#warning "task not needed"
-  isave[INDEX_OF_TASK]   = task;
-  isave[INDEX_OF_STAGE]  = stage;
-  isave[INDEX_OF_ITER]   = iter;
-  isave[INDEX_OF_MARK]   = mark;
-  isave[INDEX_OF_MP]     = mp;
+  isave[INDEX_OF_TASK]      = task; /* FIXME: task not needed, for debug only? */
+  isave[INDEX_OF_STAGE]     = stage;
+  isave[INDEX_OF_ITER]      = iter;
+  isave[INDEX_OF_MARK]      = mark;
+  isave[INDEX_OF_MP]        = mp;
 #if 0
-  dsave[INDEX_OF_SFTOL]  = sftol; /* constant */
-  dsave[INDEX_OF_SGTOL]  = sgtol; /* constant */
-  dsave[INDEX_OF_SXTOL]  = sxtol; /* constant */
-  dsave[INDEX_OF_FRTOL]  = frtol; /* constant */
-  dsave[INDEX_OF_FATOL]  = fatol; /* constant */
-  dsave[INDEX_OF_FMIN]   = fmin;  /* constant */
+  isave[INDEX_OF_FLAGS]     = flags; /* constant */
 #endif
-  dsave[INDEX_OF_F0]     = f0;
-  dsave[INDEX_OF_GD]     = gd;
-  dsave[INDEX_OF_GD0]    = gd0;
-  dsave[INDEX_OF_STP]    = stp;
-  dsave[INDEX_OF_STPMIN] = stpmin;
-  dsave[INDEX_OF_STPMAX] = stpmax;
+  isave[INDEX_OF_NEVALS]    = nevals;
+  isave[INDEX_OF_NRESTARTS] = nrestarts;
+
+#if 0
+  dsave[INDEX_OF_SFTOL]     = sftol; /* constant */
+  dsave[INDEX_OF_SGTOL]     = sgtol; /* constant */
+  dsave[INDEX_OF_SXTOL]     = sxtol; /* constant */
+  dsave[INDEX_OF_FRTOL]     = frtol; /* constant */
+  dsave[INDEX_OF_FATOL]     = fatol; /* constant */
+  dsave[INDEX_OF_FMIN]      = fmin;  /* constant */
+#endif
+  dsave[INDEX_OF_F0]        = f0;
+  dsave[INDEX_OF_GD]        = gd;
+  dsave[INDEX_OF_GD0]       = gd0;
+  dsave[INDEX_OF_STP]       = stp;
+  dsave[INDEX_OF_STPMIN]    = stpmin;
+  dsave[INDEX_OF_STPMAX]    = stpmax;
+#if 0
+  dsave[INDEX_OF_EPSILON]   = epsilon; /* constant */
+  dsave[INDEX_OF_COSTHETA]  = costheta; /* constant */
+#endif
   return task;
 }
 
@@ -401,23 +498,23 @@ int op_vmlmb_next(double x[], double *f, double g[],
 static int check_active(op_integer_t n, op_logical_t active[],
 			const double h[], int *task, char csave[])
 {
-  if (h) {
+  if (h != NULL) {
     const double zero = 0.0;
     op_integer_t i;
-    if (active) {
+    if (active != NULL) {
       /* fix ACTIVE array */
-      for (i=0 ; i<n ; ++i) {
+      for (i = 0; i < n; ++i) {
 	if (active[i] && h[i] <= zero) {
 	  active[i] = 0;
 	}
       }
     } else {
       /* check that H is positive definite */
-      for (i=0 ; i<n ; ++i) {
+      for (i = 0; i < n; ++i) {
 	if (h[i] <= zero) {
 	  op_mcopy("op_vmlmb_next: H is not positive definite", csave);
 	  *task = OP_TASK_ERROR;
-	  return 1;
+	  return -1;
 	}
       }
 
@@ -428,27 +525,57 @@ static int check_active(op_integer_t n, op_logical_t active[],
 
 /*---------------------------------------------------------------------------*/
 
-double op_vmlmb_set_fmin(const char csave[], const op_integer_t isave[],
-			 double dsave[], double new_value)
-{
-  double old_value = dsave[INDEX_OF_FMIN];
-  dsave[INDEX_OF_FMIN] = new_value;
-  return old_value;
+#define EMIT_CODE(name, NAME)						\
+int op_vmlmb_set_##name(const char csave[], op_integer_t isave[],	\
+		        double dsave[], double new_value, double *old_value) \
+{									\
+  int test = ((isave[INDEX_OF_FLAGS] & FLAG_##NAME) != 0);		\
+  if (test && old_value != (double *)NULL) {				\
+    *old_value = dsave[INDEX_OF_##NAME];				\
+  }									\
+  dsave[INDEX_OF_##NAME] = new_value;					\
+  isave[INDEX_OF_FLAGS] |= FLAG_##NAME;					\
+  return test;								\
+}									\
+int op_vmlmb_get_##name(const char csave[], const op_integer_t isave[],	\
+		      const double dsave[], double *ptr)		\
+{									\
+  int test = ((isave[INDEX_OF_FLAGS] & FLAG_##NAME) != 0);		\
+  if (test && ptr != (double *)NULL) {					\
+    *ptr = dsave[INDEX_OF_##NAME];					\
+  }									\
+  return test;								\
 }
+EMIT_CODE(fmin, FMIN)
+EMIT_CODE(delta, DELTA)
+#undef EMIT_CODE
 
-#define GET_FUNC(type, foo, FOO, save)				\
+#define EMIT_CODE(type, foo, FOO, save)				\
 type OP_CONCAT(op_vmlmb_get_,foo)(const char csave[],		\
 				  const op_integer_t isave[],	\
 				  const double dsave[])		\
 { return dsave[OP_CONCAT(INDEX_OF_,FOO)]; }
-GET_FUNC(double, sftol, SFTOL, dsave)
-GET_FUNC(double, sgtol, SGTOL, dsave)
-GET_FUNC(double, sxtol, SXTOL, dsave)
-GET_FUNC(double, frtol, FRTOL, dsave)
-GET_FUNC(double, fatol, FATOL, dsave)
-GET_FUNC(double, fmin,  FMIN, dsave)
-GET_FUNC(double, step,  STP, dsave)
-GET_FUNC(op_integer_t, iter,  ITER, isave)
-#undef GET_FUNC
+EMIT_CODE(double, sftol,      SFTOL,    dsave)
+EMIT_CODE(double, sgtol,      SGTOL,    dsave)
+EMIT_CODE(double, sxtol,      SXTOL,    dsave)
+EMIT_CODE(double, frtol,      FRTOL,    dsave)
+EMIT_CODE(double, fatol,      FATOL,    dsave)
+EMIT_CODE(double, step,       STP,      dsave)
+EMIT_CODE(double, epsilon,    EPSILON,  dsave)
+EMIT_CODE(double, costheta,   COSTHETA, dsave)
+EMIT_CODE(op_integer_t, iter,      ITER,      isave)
+EMIT_CODE(op_integer_t, nevals,    NEVALS,    isave)
+EMIT_CODE(op_integer_t, nrestarts, NRESTARTS, isave)
+#undef EMIT_CODE
 
 /*---------------------------------------------------------------------------*/
+
+/*
+ * Local Variables:
+ * mode: C
+ * tab-width: 8
+ * c-basic-offset: 2
+ * fill-column: 78
+ * coding: latin-1
+ * End:
+ */
