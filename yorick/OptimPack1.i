@@ -5,7 +5,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
+ * Copyright (c) 2003-2009, 2016 Ã‰ric ThiÃ©baut.
  *
  * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *
@@ -55,20 +55,20 @@ func op_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
 }
 
 func op_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
-                    epsilon=, costheta=)
+                    delta=, epsilon=)
 {
   csave = array(char, 128);
   isave = array(long,  12);
   dsave = array(double, 27 + n + 2*m*(n + 1));
   if (is_void(frtol)) frtol = 1e-10;
   if (is_void(fatol)) fatol = 1e-13;
-  if (is_void(sftol)) sftol = 0.001;
+  if (is_void(sftol)) sftol = 0.001; // FIXME:
   if (is_void(sgtol)) sgtol = 0.9;
   if (is_void(sxtol)) sxtol = 0.1;
-  if (is_void(epsilon)) epsilon = 1E-8;
-  if (is_void(costheta)) costheta = 1E-2;
+  if (is_void(delta)) delta = 1e-3;
+  if (is_void(epsilon)) epsilon = 0.0;
   task = long(__op_vmlmb_first(n, m, fatol, frtol, sftol, sgtol, sxtol,
-                               epsilon, costheta, csave, isave, dsave));
+                               delta, epsilon, csave, isave, dsave));
   if (task != 1) error, string(&csave);
   ws = [&csave, &isave, &dsave];
   if (! is_void(fmin)) {
@@ -129,7 +129,7 @@ extern __op_vmlmb_first;
    int op_vmlmb_first(long n, long m,
                       double fatol, double frtol,
                       double sftol, double sgtol, double sxtol,
-                      double epsilon, double costheta,
+                      double delta, double epsilon,
                       char array csave, long array isave, double array dsave);
 */
 

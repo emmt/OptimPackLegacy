@@ -6,7 +6,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
+ * Copyright (c) 2003-2009, 2016 Ã‰ric ThiÃ©baut.
  *
  * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *

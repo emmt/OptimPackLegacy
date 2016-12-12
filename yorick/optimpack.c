@@ -1,33 +1,29 @@
 /*
  * optimpack.c --
  *
- *	Implementation of Yorick wrapper for OptimPack.
+ * Implementation of Yorick wrapper for OptimPack.
  *
  *-----------------------------------------------------------------------------
  *
- *	Copyright (C) 2003-2007 Eric Thi�baut.
+ * Copyright (c) 2003-2007, 2016 Éric Thiébaut.
  *
- *	This file is part of OptimPack.
+ * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *
- *	OptimPack is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	version 2 as published by the Free Software Foundation.
+ * OptimPack is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
- *	OptimPack is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * OptimPack is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
  *
- *	You should have received a copy of the GNU General Public
- *	License along with OptimPack (file "COPYING" in the top source
- *	directory); if not, write to the Free Software Foundation,
- *	Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU General Public License along with
+ * OptimPack (file "LICENSE" in the top source directory); if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307 USA
  *
- *-----------------------------------------------------------------------------
- *
- * History:
- *	$Id$
- *	$Log$
  *-----------------------------------------------------------------------------
  */
 
@@ -114,12 +110,3 @@ static char *get_char_array(const char *name, Symbol *s,
     YError("expecting scalar pointer argument");
   return *(void **)op.value;
 }
-
-/*---------------------------------------------------------------------------*
- * Local Variables:                                                          *
- * mode: C                                                                   *
- * tab-width: 8                                                              *
- * fill-column: 75                                                           *
- * coding: latin-1                                                           *
- * End:                                                                      *
- *---------------------------------------------------------------------------*/
