@@ -18,3 +18,7 @@
 * Safeguard the step.
 
 * Implement BLMVM.
+
+* Saving best variables so far can be very cheap: it is sufficient to
+  remember the best step length, and corresponding function value and
+  gradient norm.
