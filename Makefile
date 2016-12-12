@@ -32,7 +32,7 @@ VERSION = `sed < VERSION -e 's/ //g'`
 SUBDIRS = yorick idl src
 
 DISTRIB_SRC = $(srcdir)
-DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS README TODO optimpack.bib
+DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md optimpack.bib
 
 CODE_SRC = $(srcdir)/src
 CODE_FILES = op_limits.h op_lnsrch.c optimpack.h op_utils.c op_vmlmb.c

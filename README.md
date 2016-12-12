@@ -1,12 +1,12 @@
-# OptimPack
-# (legacy version 1)
+# OptimPack (legacy version 1)
 
-This is **OptimPack**, a C library for optimization.  This version implements:
+This is **OptimPack**, a C library for optimization of large scale problems
+possibly with bound constraints.  This version implements:
 
-- inexact line search (see ref. [1]);
+- Moré and Thuente method for inexact line search;
 
-- limited memory BFGS (variable metric) possibly with bound constraints and/or
-preconditioning;
+- VMLMB algorithm by Éric Thiébaut which is a limited memory BFGS (variable
+  metric) method possibly with bound constraints and/or preconditioning.
 
 A new version of OptimPack is under development and available at
 https://github.com/emmt/OptimPack
