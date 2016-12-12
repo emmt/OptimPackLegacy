@@ -1,19 +1,32 @@
-#                                                              -*- Makefile -*-
+#
 # Makefile --
 #
-#	Makefile for YOP (Yorick + OptimPack).
-#
-# History:
-#	$Id: Makefile,v 1.2 2007/07/05 09:20:55 eric Exp $
-#	$Log: Makefile,v $
-#	Revision 1.2  2007/07/05 09:20:55  eric
-#	Changed 'optimpack.i' into 'OptimPack1.i' to avoid confusion
-#	with pure Yorick implementation of OptimPack.
-#
-#	Revision 1.1  2007/07/05 09:10:00  eric
-#	Initial revision
+# Makefile for YOP (Yorick + OptimPack).
 #
 #------------------------------------------------------------------------------
+#
+# Copyright (c) 2003, 2016 Éric Thiébaut.
+#
+# This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
+#
+# OptimPack is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2 of the License, or (at your
+# option) any later version.
+#
+# OptimPack is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with OptimPack (file "LICENSE" in the top source directory); if not,
+# write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+# Boston, MA 02111-1307 USA
+#
+#------------------------------------------------------------------------------
+
+srcdir = .
 
 # Comment out the following definitions if you don't want LBFGS:
 #LBFGS_OBJS = lbfgs.o lbfgs_wrapper.o
@@ -90,23 +103,17 @@ MAKE_TEMPLATE = protect-against-1.5
 
 # ------------------------------------------ targets and rules for this package
 
+# Directory where are the OptimPack sources:
+OPT_SRC = $(srcdir)/../src
+
 # simple example:
 #myfunc.o: myapi.h
 # more complex example (also consider using PKG_CFLAGS above):
 #myfunc.o: myapi.h myfunc.c
 #	$(CC) $(CPPFLAGS) $(CFLAGS) -DMY_SWITCH -o $@ -c myfunc.c
 
-#op_lnsrch.o: ../op_lnsrch.c ../optimpack.h
-#	$(CC) $(CPPFLAGS) $(CFLAGS) -c ../$(@:.o=.c) -o $@
-#op_vmlmb.o: ../op_vmlmb.c ../optimpack.h
-#	$(CC) $(CPPFLAGS) $(CFLAGS) -c ../$(@:.o=.c) -o $@
-#op_cgmnb.o: ../op_cgmnb.c ../optimpack.h
-#	$(CC) $(CPPFLAGS) $(CFLAGS) -c ../$(@:.o=.c) -o $@
-#op_utils.o: ../op_utils.c ../optimpack.h
-#	$(CC) $(CPPFLAGS) $(CFLAGS) -c ../$(@:.o=.c) -o $@
-
-op_%.o: ../op_%.c ../optimpack.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+op_%.o: $(OPT_SRC)/op_%.c $(OPT_SRC)/optimpack.h
+	$(CC) $(CPPFLAGS) -I$(OPT_SRC) $(CFLAGS) -o $@ -c $<
 
 # L-BGFS-B stuff:
 lbfgsb_wrapper.o: lbfgsb_wrapper.c

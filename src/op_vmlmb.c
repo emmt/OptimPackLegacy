@@ -1,40 +1,29 @@
 /*
  * op_vmlmb --
  *
- *	Variable Metric Limited Memory with Bound constraints for
- *	OptimPack library.
+ * Variable Metric Limited Memory with Bound constraints for OptimPack
+ * library.
  *
  *-----------------------------------------------------------------------------
  *
- *      Copyright (c) 2003-2009, Eric THIEBAUT.
+ * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
  *
- *	This file is part of OptimPack.
+ * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *
- *	OptimPack is  free software; you can redistribute  it and/or modify
- *	it under the  terms of the GNU General  Public License as published
- *	by the Free  Software Foundation; either version 2  of the License,
- *	or (at your option) any later version.
+ * OptimPack is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
- *	OptimPack is  distributed in the hope  that it will  be useful, but
- *	WITHOUT  ANY  WARRANTY;  without   even  the  implied  warranty  of
- *	MERCHANTABILITY or  FITNESS FOR A PARTICULAR PURPOSE.   See the GNU
- *	General Public License for more details.
+ * OptimPack is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
  *
- *	You should have  received a copy of the  GNU General Public License
- *	along with OptimPack (file  "LICENSE" in the top source directory);
- *	if  not, write  to the  Free Software  Foundation, Inc.,  59 Temple
- *	Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *-----------------------------------------------------------------------------
- *
- *	$Id: op_vmlmb.c,v 1.2 2008/02/07 09:56:19 eric Exp eric $
- *	$Log: op_vmlmb.c,v $
- *	Revision 1.2  2008/02/07 09:56:19  eric
- *	 - Saved this version corresponding to OptimPack release 1.2 prior
- *	   to changes for next release.
- *
- *	Revision 1.1  2003/03/17 08:58:24  eric
- *	Initial revision
+ * You should have received a copy of the GNU General Public License along with
+ * OptimPack (file "LICENSE" in the top source directory); if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307 USA
  *
  *-----------------------------------------------------------------------------
  */
@@ -264,7 +253,7 @@ int op_vmlmb_next(double x[], double *f, double g[],
       op_dscal(n, snorm/gpnorm, S(mark));
       gd = -snorm*gpnorm;
     } else {
-      /* Use diagonal preconditioner to compute initial search direction. */ 
+      /* Use diagonal preconditioner to compute initial search direction. */
       for (ptr = S(mark), i = 0; i < n; ++i) {
 	ptr[i] *= h[i];
       }
@@ -348,7 +337,7 @@ int op_vmlmb_next(double x[], double *f, double g[],
       op_daxpy_active(n, alpha[j] - op_ddot(n, Y(j), v)/rho[j],
 		      S(j), v, active);
     }
-    
+
     /* Compute dot product of gradient and search direction. */
     gd = -op_ddot(n, g, v); /* FIXME: should be GP? */
     if (gd >= zero) {
@@ -386,7 +375,7 @@ int op_vmlmb_next(double x[], double *f, double g[],
       if (temp < 1.0) {
 	temp = 1.0;
       }
-      stpmax = temp/(sgtol*gd0); 
+      stpmax = temp/(sgtol*gd0);
     }
 #endif
     stp = OP_MIN(1.0, stpmax);
@@ -569,13 +558,3 @@ EMIT_CODE(op_integer_t, nrestarts, NRESTARTS, isave)
 #undef EMIT_CODE
 
 /*---------------------------------------------------------------------------*/
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * fill-column: 78
- * coding: latin-1
- * End:
- */

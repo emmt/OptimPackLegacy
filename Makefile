@@ -1,26 +1,40 @@
+#
+# Makefile --
+#
+# Makefile for OptimPack.
+#
+#------------------------------------------------------------------------------
+#
+# Copyright (c) 2003, 2016 Éric Thiébaut.
+#
+# This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
+#
+# OptimPack is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2 of the License, or (at your
+# option) any later version.
+#
+# OptimPack is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with OptimPack (file "LICENSE" in the top source directory); if not,
+# write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+# Boston, MA 02111-1307 USA
+#
+#------------------------------------------------------------------------------
+
 srcdir = .
 
-PREFIX =
-INSTALL = cp -p
-
-CC = gcc -pipe
-#CPPFLAGS =  -I. -DOP_INTEGER=long -DOP_LOGICAL=int
-CPPFLAGS = -I.
-CFLAGS = -O2 -Wall
-
-RM = rm -f
-AR = ar
-ARFLAGS = rv
-
-LIBNAME = liboptimpack.a
 VERSION = `sed < VERSION -e 's/ //g'`
-OBJS = op_lnsrch.o op_utils.o op_vmlmb.o
-DIRS = yorick idl
+SUBDIRS = yorick idl src
 
 DISTRIB_SRC = $(srcdir)
 DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS README TODO optimpack.bib
 
-CODE_SRC = $(srcdir)
+CODE_SRC = $(srcdir)/src
 CODE_FILES = op_limits.h op_lnsrch.c optimpack.h op_utils.c op_vmlmb.c
 
 IDL_SRC = $(srcdir)/idl
@@ -48,22 +62,8 @@ YORICK_FILES = Makefile \
     lbfgs.f lbfgs.i lbfgs_wrapper.c \
     OptimPack1.i OptimPack1-test.i optimpack.c
 
-all: $(LIBNAME)
-install: $(LIBNAME)
-	@version=$(VERSION); \
-	if [ "x$(PREFIX)" = "x" ]; then \
-	  echo "You must define PREFIX macro, e.g.:"; \
-	  echo "   > make PREFIX=/usr/local install"; \
-	else \
-	  [ -d "$(PREFIX)/lib" ] || mkdir -p "$(PREFIX)/lib"; \
-	  $(INSTALL) $(LIBNAME) "$(PREFIX)/lib/."; \
-	  [ -d "$(PREFIX)/include" ] || mkdir -p "$(PREFIX)/include"; \
-	  $(INSTALL) optimpack.h "$(PREFIX)/include/."; \
-	  [ -d "$(PREFIX)/doc/OptimPack-$${version}" ] || \
-	    mkdir -p "$(PREFIX)/doc/OptimPack-$${version}"; \
-	  $(INSTALL) README AUTHORS LICENSE optimpack.h \
-	    "$(PREFIX)/doc/OptimPack-$${version}/."; \
-	fi
+all:
+	@echo "No default target"
 
 distrib:
 	@version=$(VERSION); \
@@ -83,6 +83,7 @@ distrib:
 	fi; \
 	dstdir=$$pkgdir/idl; \
 	mkdir -p "$$dstdir"; \
+	chmod 755 "$$dstdir"; \
 	for file in $(IDL_FILES); do \
 	  src=$(IDL_SRC)/$$file; \
 	  dst=$$dstdir/$$file; \
@@ -91,6 +92,7 @@ distrib:
 	done; \
 	dstdir=$$pkgdir/idl/contrib; \
 	mkdir -p "$$dstdir"; \
+	chmod 755 "$$dstdir"; \
 	for file in $(IDL_CONTRIB_FILES); do \
 	  src=$(IDL_CONTRIB_SRC)/$$file; \
 	  dst=$$dstdir/$$file; \
@@ -99,6 +101,7 @@ distrib:
 	done; \
 	dstdir=$$pkgdir/yorick; \
 	mkdir -p "$$dstdir"; \
+	chmod 755 "$$dstdir"; \
 	for file in $(YORICK_FILES); do \
 	  src=$(YORICK_SRC)/$$file; \
 	  dst=$$dstdir/$$file; \
@@ -107,6 +110,7 @@ distrib:
 	done; \
 	dstdir=$$pkgdir; \
 	mkdir -p "$$dstdir"; \
+	chmod 755 "$$dstdir"; \
 	for file in $(DISTRIB_FILES); do \
 	  src=$(DISTRIB_SRC)/$$file; \
 	  dst=$$dstdir/$$file; \
@@ -116,8 +120,9 @@ distrib:
 	dst=$$dstdir/VERSION; \
 	echo "$$version" >"$$dst"; \
 	chmod 644 "$$dst"; \
-	dstdir=$$pkgdir; \
+	dstdir=$$pkgdir/src; \
 	mkdir -p "$$dstdir"; \
+	chmod 755 "$$dstdir"; \
 	for file in $(CODE_FILES); do \
 	  src=$(CODE_SRC)/$$file; \
 	  dst=$$dstdir/$$file; \
@@ -130,25 +135,17 @@ distrib:
 	return 0
 
 clean:
-	$(RM) *~ $(OBJS) $(LIBNAME)
-	for dir in $(DIRS); do \
+	$(RM) *~
+	for dir in $(SUBDIRS); do \
 	  if [ -f "$$dir/Makefile" ]; then \
 	    (cd $$dir; make clean); \
 	  fi; \
 	done
 
 distclean: clean
-	$(RM) $(LIBNAME)
+	for dir in $(SUBDIRS); do \
+	  if [ -f "$$dir/Makefile" ]; then \
+	    (cd $$dir; make distclean); \
+	  fi; \
+	done
 
-$(LIBNAME): $(OBJS)
-	$(RM) $(LIBNAME)
-	$(AR) $(ARFLAGS) $(LIBNAME) $(OBJS)
-
-op_lnsrch.o: op_lnsrch.c optimpack.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-op_vmlmb.o: op_vmlmb.c optimpack.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-op_cgmnb.o: op_cgmnb.c optimpack.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-op_utils.o: op_utils.c optimpack.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@

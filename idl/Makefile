@@ -1,38 +1,29 @@
 #
 # Makefile -
 #
-#	Makefile for OptimPack / IDL plugin.
+# Makefile for OptimPack / IDL plugin.
 #
 #------------------------------------------------------------------------------
 #
-#	Copyright (c) 1988-2001, Research Systems Inc.  All rights reserved.
-#	This software includes information which is proprietary to and a
-#	trade secret of Research Systems, Inc.  It is not to be disclosed
-#	to anyone outside of this organization. Reproduction by any means
-#	whatsoever is  prohibited without express written permission.
+# Copyright (c) 1988-2001, Research Systems Inc.  All rights reserved.
+# This software includes information which is proprietary to and a trade
+# secret of Research Systems, Inc.  It is not to be disclosed to anyone
+# outside of this organization. Reproduction by any means whatsoever is
+# prohibited without express written permission.
 #
-#	makefile for CALL_EXTERNAL examples, UNIX platforms
+# makefile for CALL_EXTERNAL examples, UNIX platforms
 #
-#	This is a recursive makefile. The default target "all" detects which
-#	operating system you are on, sets system specific macros, and then
-#	calls make again to build the target "libs".  Specifying a target
-#	other than "all","clean", or "tidy" will NOT set all required macros
-#	and will probably produce incorrect results.
-#
-#------------------------------------------------------------------------------
-#
-#	$Id: Makefile,v 1.2 2007/07/05 09:04:03 eric Exp $
-#	$Log: Makefile,v $
-#	Revision 1.2  2007/07/05 09:04:03  eric
-#	Integrate changes by Laurent Mugnier (ONERA):
-#	 - library name is OptimPack_IDL$OSTYPE.so (or OptimPack_IDL$OSTYPE_64.so)
-#	   instead of the original OptimPack_IDL.so
-#	 - linux 64 bit platforms handled (64 and 32 bit libraries generated)
-#
-#	Revision 1.1  2007/07/05 08:59:03  eric
-#	Initial revision
+# This is a recursive makefile. The default target "all" detects which
+# operating system you are on, sets system specific macros, and then calls
+# make again to build the target "libs".  Specifying a target other than
+# "all","clean", or "tidy" will NOT set all required macros and will
+# probably produce incorrect results.
 #
 #------------------------------------------------------------------------------
+
+srcdir = .
+
+SRC_DIR = $(srcdir)/../src
 
 SHELL=/bin/sh
 # 	The following macro might need to be edited if the location
@@ -53,9 +44,9 @@ X_CFLAGS	=
 #platform specific linker flags
 X_LD_FLAGS	=
 
-SO_EXT		=so
+SO_EXT		= so
 
-NAME		=OptimPack_IDL
+NAME		= OptimPack_IDL
 
 OSTYPEVAR = `echo "${OSTYPE}"`
 MACHTYPEVAR = `echo "${MACHTYPE}"`
@@ -177,14 +168,14 @@ op_idl_vmlmb_next.export:
 	$(CC) $(OP_CFLAGS) -c $*.c
 
 # Rules for OptimPack object files:
-op_lnsrch.o: ../op_lnsrch.c ../optimpack.h op_wrapper.c op_idl.h
-	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"../$(@:.o=.c)\" -o $@
-op_vmlmb.o: ../op_vmlmb.c ../optimpack.h op_wrapper.c op_idl.h
-	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"../$(@:.o=.c)\" -o $@
-op_cgmnb.o: ../op_cgmnb.c ../optimpack.h op_wrapper.c op_idl.h
-	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"../$(@:.o=.c)\" -o $@
-op_utils.o: ../op_utils.c ../optimpack.h op_wrapper.c op_idl.h
-	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"../$(@:.o=.c)\" -o $@
+op_lnsrch.o: $(SRC_DIR)/op_lnsrch.c $(SRC_DIR)/optimpack.h op_wrapper.c op_idl.h
+	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"$(SRC_DIR)/$(@:.o=.c)\" -o $@
+op_vmlmb.o: $(SRC_DIR)/op_vmlmb.c $(SRC_DIR)/optimpack.h op_wrapper.c op_idl.h
+	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"$(SRC_DIR)/$(@:.o=.c)\" -o $@
+op_cgmnb.o: $(SRC_DIR)/op_cgmnb.c $(SRC_DIR)/optimpack.h op_wrapper.c op_idl.h
+	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"$(SRC_DIR)/$(@:.o=.c)\" -o $@
+op_utils.o: $(SRC_DIR)/op_utils.c $(SRC_DIR)/optimpack.h op_wrapper.c op_idl.h
+	$(CC) $(OP_CFLAGS) -c op_wrapper.c -DSOURCE=\"$(SRC_DIR)/$(@:.o=.c)\" -o $@
 
 $(NAME).$(SO_EXT): $(OBJS) $(EXPORT_FILES)
 	$(LD) $(X_LD_FLAGS) -o $(NAME).$(SO_EXT) $(OBJS) $(EXPORT_FLAGS)

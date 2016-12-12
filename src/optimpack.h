@@ -1,34 +1,28 @@
 /*
  * optimpack.h --
  *
- *	Definitions for optimization routines implemented in OptimPack
- *	library.
+ * Definitions for optimization routines implemented in OptimPack library.
  *
  *-----------------------------------------------------------------------------
  *
- *      Copyright (c) 2003, Eric THIEBAUT.
+ * Copyright (c) 2003, 2016 Éric Thiébaut.
  *
- *	This file is part of OptimPack.
+ * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *
- *	OptimPack is  free software; you can redistribute  it and/or modify
- *	it under the  terms of the GNU General  Public License as published
- *	by the Free  Software Foundation; either version 2  of the License,
- *	or (at your option) any later version.
+ * OptimPack is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
- *	OptimPack is  distributed in the hope  that it will  be useful, but
- *	WITHOUT  ANY  WARRANTY;  without   even  the  implied  warranty  of
- *	MERCHANTABILITY or  FITNESS FOR A PARTICULAR PURPOSE.   See the GNU
- *	General Public License for more details.
+ * OptimPack is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
  *
- *	You should have  received a copy of the  GNU General Public License
- *	along with OptimPack (file  "LICENSE" in the top source directory);
- *	if  not, write  to the  Free Software  Foundation, Inc.,  59 Temple
- *	Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *-----------------------------------------------------------------------------
- *
- *	$Id$
- *	$Log$
+ * You should have received a copy of the GNU General Public License along with
+ * OptimPack (file "LICENSE" in the top source directory); if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307 USA
  *
  *-----------------------------------------------------------------------------
  */
@@ -330,7 +324,7 @@ extern int op_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
  *     between  STX and  STY.  On  output STP  (i.e. the  value  at address
  *     STP_PTR) is set to the new step.
  *
- *  
+ *
  *   BRACKT_PTR  is the  addresses where  the  value of  BRACKT is  stored.
  *     BRACKT  is a  logical variable.   On  entry, BRACKT  specifies if  a
  *     minimizer has been bracketed.  Initially BRACKT must be set to false
@@ -470,7 +464,7 @@ extern int op_vmlmb_next(double x[], double *f, double g[],
  *       sign (i.e.  the steepest descent direction would violate the bound
  *       constraints):
  *           ACTIVE[i] = 0 if i-th value has a lower bound XLO[i]
- *                           and X[i]=XLO[i] and G[i]>=0 
+ *                           and X[i]=XLO[i] and G[i]>=0
  *                       0 if i-th value has an upper bound XHI[i]
  *                           and X[i]=XHI[i] and G[i]<=0
  *                       1 (or any non-zero value) otherwise
@@ -525,7 +519,7 @@ extern int op_vmlmb_next(double x[], double *f, double g[],
  *
  *    // Choose a starting vector:
  *    for (i=0 ; i<n ; ++i) x[i] = ... ;
- *  
+ *
  *    // Allocate and setup workspaces:
  *    csave = malloc(OP_VMLMB_CSAVE_NUMBER*sizeof(char));
  *    isave = malloc(OP_VMLMB_ISAVE_NUMBER*sizeof(op_integer_t));
@@ -553,7 +547,7 @@ extern int op_vmlmb_next(double x[], double *f, double g[],
  *
  *    // Choose a starting vector:
  *    for (i=0 ; i<n ; ++i) x[i] = ... ;
- *  
+ *
  *    // Allocate and setup workspaces:
  *    csave = malloc(OP_VMLMB_CSAVE_NUMBER*sizeof(char));
  *    isave = malloc(OP_VMLMB_ISAVE_NUMBER*sizeof(op_integer_t));
@@ -731,7 +725,7 @@ extern void op_daxpy_active(op_integer_t n, double a,
 			    const op_logical_t active[]);
 /* Does Y[i] += A*X[i] for i=0,...,N-1.  If ACTIVE is non-NULL, only
    elements for which ACTIVE[i] is true (non-zero) are taken into
-   account. */ 
+   account. */
 
 extern double op_ddot(op_integer_t n, const double x[], const double y[]);
 extern double op_ddot_active(op_integer_t n, const double x[],
@@ -741,7 +735,7 @@ extern double op_ddot_active(op_integer_t n, const double x[],
    into account. */
 
 extern void op_dscal(op_integer_t n, double a, double x[]);
-/* Scales N-element vector X by scalar A. */ 
+/* Scales N-element vector X by scalar A. */
 
 /*---------------------------------------------------------------------------*/
 /* YORICK-LIKE ROUTINES */
