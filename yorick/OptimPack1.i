@@ -1,38 +1,28 @@
 /*
  * OptimPack1.i --
  *
- *	Main startup file for OptimPack extension of Yorick.
+ * Main startup file for OptimPack extension of Yorick.
  *
  *-----------------------------------------------------------------------------
  *
- *	Copyright (C) 2003-2007 Eric Thiébaut.
+ * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
  *
- *	This file is part of OptimPack.
+ * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *
- *	OptimPack is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	version 2 as published by the Free Software Foundation.
+ * OptimPack is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
- *	OptimPack is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * OptimPack is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
  *
- *	You should have received a copy of the GNU General Public
- *	License along with OptimPack (file "COPYING" in the top source
- *	directory); if not, write to the Free Software Foundation,
- *	Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
- *
- *-----------------------------------------------------------------------------
- *
- * History:
- *	$Id$
- *	$Log: OptimPack1.i,v $
- *	Revision 1.2  2007/07/11 06:16:01  eric
- *	New function op_mnb which is a "simple" driver to OptimPack routines.
- *
- *	Revision 1.1  2007/07/05 10:13:21  eric
- *	Initial revision
+ * You should have received a copy of the GNU General Public License along with
+ * OptimPack (file "LICENSE" in the top source directory); if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307 USA
  *
  *-----------------------------------------------------------------------------
  */
@@ -100,7 +90,7 @@ func op_vmlmb_next(x, &f, &g, ws, active, h)
     error, "corrupted workspace (ISAVE)";
   m = isave(5);
   n = isave(6);
-  
+
   local dsave; eq_nocopy, dsave, *ws(3);
   if (structof(dsave) != double || numberof(dsave) != 27 + n + 2*m*(1 + n))
     error, "corrupted workspace (DSAVE)";
@@ -111,13 +101,13 @@ func op_vmlmb_next(x, &f, &g, ws, active, h)
     error, "bad function value F";
   if (structof(g) != double || numberof(g) != n)
     error, "bad gradient array G";
-  
+
   if (! is_void(active) && (structof(active) != int ||
                             numberof(active) != n )) error, "bad array ACTIVE";
-  
+
   if (! is_void(h) && (structof(h) != double ||
                        numberof(h) != n )) error, "bad array H";
-  
+
   return long(__op_vmlmb_next(x, f, g, &active, &h, csave, isave, dsave));
 }
 
@@ -146,30 +136,30 @@ extern __op_vmlmb_first;
 extern __op_vmlmb_set_fmin;
 /* PROTOTYPE
    int op_vmlmb_set_fmin(char array csave,
-                          long array isave,
-                          double array dsave,
-                          double new_value,
-                          double array old_value);
+                         long array isave,
+                         double array dsave,
+                         double new_value,
+                         double array old_value);
 */
 extern __op_vmlmb_get_fmin;
 /* PROTOTYPE
    int op_vmlmb_get_fmin(char array csave,
-                          long array isave,
-                          double array dsave,
-                          double array value);
+                         long array isave,
+                         double array dsave,
+                         double array value);
 */
 
 local op_vmlmb_set_fmin;
 local op_vmlmb_get_fmin;
 /* DOCUMENT old = op_vmlmb_set_fmin(ws, fmin);
- *     -or- fmin = op_vmlmb_get_fmin(ws);
- *
- *    The function op_vmlmb_set_fmin set the value of FMIN in workspace WS
- *    and returns the previous value of FMIN if any (nil otherwise).
- *
- *    The function op_vmlmb_get_fmin returns the actual value of FMIN in
- *    workspace WS or nil if FMIN has never been set.
- *
+         or fmin = op_vmlmb_get_fmin(ws);
+
+      The function op_vmlmb_set_fmin set the value of FMIN in workspace WS and
+      returns the previous value of FMIN if any (nil otherwise).
+
+      The function op_vmlmb_get_fmin returns the actual value of FMIN in
+      workspace WS or nil if FMIN has never been set.
+
    SEE ALSO: op_vmlmb_first.
  */
 func op_vmlmb_set_fmin(ws, new)
@@ -187,117 +177,165 @@ func op_vmlmb_get_fmin(ws)
   }
 }
 
-func op_mnb(f, x, &fx, &gx, fmin=,
-            extra=, xmin=, xmax=, method=, mem=, verb=, quiet=,
+func op_mnb(f, x, &fx, &gx, fmin=, extra=,
+            xmin=, xmax=, method=, mem=, verb=, quiet=,
             viewer=, printer=,
             maxiter=, maxeval=, output=,
             frtol=, fatol=, sftol=, sgtol=, sxtol=)
-/* DOCUMENT op_mnb(f, x)
- *     -or- op_mnb(f, x, fout, gout)
- *     
- *   Returns a minimum of a multivariate function by an iterative
- *   minimization algorithm (conjugate gradient or limited memory variable
- *   metric) possibly with simple bound constraints on the parameters.
- *   Arguments are:
- *   
- *     F - User defined function to optimize.
- *         The prototype of F is:
- *           func F(x, &gx) {
- *             fx = ....; // compute function value at X
- *             gx = ....; // store gradient of F in GX
- *             return fx; // return F(X)
- *           }
- *
- *     X - Starting solution (a floating point array).
- *
- *     FOUT - Optional output variable to store the value of F at the
- *         minimum.
- *
- *     GOUT - optional output variable to store the value of the gradient
- *         of F at the minimum.
- *
- *   If the multivariate function has more than one minimum, which minimum
- *   is returned is undefined (although it depends on the starting
- *   parameters X).
- *
- *   In case of early termination, the best solution found so far is
- *   returned.
- *
- *
- * KEYWORDS
- *
- *   EXTRA - Supplemental argument for F; if non-nil, F is called as
- *       F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).
- *
- *   XMIN, XMAX  - Lower/upper bounds for  X.  Must be  conformable with X.
- *       For instance with XMIN=0, the non-negative solution will be
- *       returned.
- *
- *   METHOD - Scalar integer which  defines the optimization method to use.
- *       Conjugate  gradient   algorithm  is  used  if  one   of  the  bits
- *       OP_FLAG_POLAK_RIBIERE,         OP_FLAG_FLETCHER_REEVES,         or
- *       OP_FLAG_HESTENES_STIEFEL  is  set;  otherwise,  a  limited  memory
- *       variable  metric algorithm  (VMLM-B) is  used.  If  METHOD  is not
- *       specified and  if MEM=0, a conjugate gradient  search is attempted
- *       with flags: (OP_FLAG_UPDATE_WITH_GP |
- *                    OP_FLAG_SHANNO_PHUA    |
- *                    OP_FLAG_MORE_THUENTE   |
- *                    OP_FLAG_POLAK_RIBIERE  |
- *                    OP_FLAG_POWELL_RESTART)
- *       otherwise VMLM-B is used with flags: (OP_FLAG_UPDATE_WITH_GP |
- *                                             OP_FLAG_SHANNO_PHUA    |
- *                                             OP_FLAG_MORE_THUENTE).
- *       See documentation  of op_get_flags to  figure out the  allowed bit
- *       flags and their meaning.
- *
- *   MEM - Number of previous directions used in variable metric limited
- *       memory method (default min(7, numberof(X))).
- *
- *   MAXITER - Maximum number of iterations (default: no limits).
- *
- *   MAXEVAL - Maximum number of function evaluations (default: no limits).
- *
- *   FTOL - Relative function change tolerance for convergence (default:
- *       1.5e-8).
- *
- *   GTOL - Gradient tolerance for convergence (default: 3.7e-11).
- *
- *   VERB - Verbose mode?  If non-nil and non-zero, print out information
- *       every VERB iterations and for the final one.
- *
- *   QUIET - If true and not in verbose mode, do not print warning nor
- *       convergence error messages.
- *
- *   OUPTPUT - Output for verbose mode.  For instance, text file stream
- *       opened for writing.
- *
- *   VIEWER - User defined subroutine to call every VERB iterations (see
- *       keyword VERB above)to display the solution X.  The subroutine will
- *       be called as:
- *          viewer, x, extra;
- *       where X is the current solution and EXTRA is the value of keyword
- *       EXTRA (which to see).  If the viewer uses Yorick graphics
- *       window(s) it may call "pause, 1;" before returning to make sure
- *       that graphics get correctly updated.
- *
- *   PRINTER - User defined subroutine to call every VERB iterations (see
- *       keyword VERB above) to printout iteration information.
- *       The subroutine will be called as:
- *          printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra; 
- *       where OUTPUT is the value of keyword OUTPUT (which to see), ITER
- *       is the number of iterations, EVAL is the number of function
- *       evaluations, CPU is the elapsed CPU time in seconds, FX is the
- *       function value at X, GNORM is the Euclidean norm of the gradient
- *       at X, STEPLEN is the length of the step along the search
- *       direction, X is the current solution and EXTRA is the value of
- *       keyword EXTRA (which to see).
- *
- *   SFTOL, SGTOL, SXTOL, SXBIG - Line   search   tolerance  and  safeguard
- *      parameters (see op_csrch).
- *   
- * SEE ALSO: op_get_flags, op_csrch,
- *           op_cgmnb_setup, op_cgmnb_next,
- *           op_vmlmb_setup, op_vmlmb_next.
+/* DOCUMENT op_mnb(f, x);
+         or op_mnb(f, x, fout, gout);
+
+     This is a wrapper to preserve compatibility with previous versions of
+     OptimPack. See `op_vmlmb` for a full documentation.
+
+   SEE ALSO op_vmlmb.
+*/
+{
+  /* Choose minimization method.
+     FIXME: METHOD - Scalar integer which  defines the optimization method to use.
+     FIXME:     Conjugate  gradient   algorithm  is  used  if  one   of  the  bits
+     FIXME:     OP_FLAG_POLAK_RIBIERE,         OP_FLAG_FLETCHER_REEVES,         or
+     FIXME:     OP_FLAG_HESTENES_STIEFEL  is  set;  otherwise,  a  limited  memory
+     FIXME:     variable  metric algorithm  (VMLM-B) is  used.  If  METHOD  is not
+     FIXME:     specified and  if MEM=0, a conjugate gradient  search is attempted
+     FIXME:     with flags: (OP_FLAG_UPDATE_WITH_GP |
+     FIXME:                  OP_FLAG_SHANNO_PHUA    |
+     FIXME:                  OP_FLAG_MORE_THUENTE   |
+     FIXME:                  OP_FLAG_POLAK_RIBIERE  |
+     FIXME:                  OP_FLAG_POWELL_RESTART)
+     FIXME:     otherwise VMLM-B is used with flags: (OP_FLAG_UPDATE_WITH_GP |
+     FIXME:                                           OP_FLAG_SHANNO_PHUA    |
+     FIXME:                                           OP_FLAG_MORE_THUENTE).
+     FIXME:     See documentation  of op_get_flags to  figure out the  allowed bit
+     FIXME:     flags and their meaning.
+  */
+  if (! method) {
+    /* Variable metric. */
+    if (is_void(mem)) mem = min(n, 7);
+    if (is_void(fmin)) fmin = 0.0;
+    method = 0;
+    method_name = swrite(format="Limited Memory BFGS (VMLM with MEM=%d)",
+                         mem);
+    ws = op_vmlmb_setup(n, mem, /*fmin=fmin,*/
+                        fatol=fatol, frtol=frtol,
+                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+  } else if (method < 0) {
+    if (is_void(mem)) mem = min(n, 7);
+    method_name = swrite(format="Limited Memory BFGS (LBFGS with MEM=%d)",
+                         mem);
+    ws = op_lbfgs_setup(n, mem);
+  } else if (method >= 1 && method <= 15) {
+    /* Conjugate gradient. */
+    mem = 2;
+    error, "conjugate-gradient method not yet implemented";
+    method_name = swrite(format="Conjugate Gradient (%s)",
+                         ["Fletcher-Reeves", "Polak-Ribiere",
+                          "Polak-Ribiere with non-negative BETA"](method&3));
+    ws = optim_cgmn_setup(method, fmin=fmin, fatol=fatol, frtol=frtol);
+  } else {
+    error, "bad METHOD";
+  }
+  return op_vmlmb(f, x, fx, gx, fmin=fmin, extra=extra,
+                  xmin=xmin, xmax=xmax, flags=method, mem=mem,
+                  verb=verb, quiet=quiet, viewer=viewer, printer=printer,
+                  maxiter=maxiter, maxeval=maxeval, output=output,
+                  frtol=frtol, fatol=fatol,
+                  sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+}
+
+func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
+              verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
+              frtol=, fatol=, sftol=, sgtol=, sxtol=)
+/* DOCUMENT op_mnb(f, x);
+         or op_mnb(f, x, fout, gout);
+
+     Returns a minimum of a multivariate function by an iterative minimization
+     algorithm (limited memory variable metric) possibly with simple bound
+     constraints on the parameters.  Arguments are:
+
+       F - User defined function to optimize.
+           The prototype of F is:
+             func F(x, &gx) {
+               fx = ....; // compute function value at X
+               gx = ....; // store gradient of F in GX
+               return fx; // return F(X)
+             }
+
+       X - Starting solution (a floating point array).
+
+       FOUT - Optional output variable to store the value of F at the
+           minimum.
+
+       GOUT - optional output variable to store the value of the gradient
+           of F at the minimum.
+
+     If the multivariate function has more than one minimum, which minimum
+     is returned is undefined (although it depends on the starting
+     parameters X).
+
+     In case of early termination, the best solution found so far is
+     returned.
+
+
+   KEYWORDS
+
+     EXTRA - Supplemental argument for F; if non-nil, F is called as
+         F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).
+
+     XMIN, XMAX  - Lower/upper bounds for  X.  Must be  conformable with X.
+         For instance with XMIN=0, the non-negative solution will be
+         returned.
+
+     MEM - Number of previous directions used in variable metric limited
+         memory method (default min(7, numberof(X))).
+
+     MAXITER - Maximum number of iterations (default: no limits).
+
+     MAXEVAL - Maximum number of function evaluations (default: no limits).
+
+     FATOL, FRTOL - Relative function change tolerance for convergence (default:
+         1.5e-8).
+
+     GTOL - Gradient tolerance for convergence (default: 3.7e-11).
+
+     VERB - Verbose mode?  If non-nil and non-zero, print out information
+         every VERB iterations and for the final one.
+
+     QUIET - If true and not in verbose mode, do not print warning nor
+         convergence error messages.
+
+     OUPTPUT - Output for verbose mode.  For instance, text file stream
+         opened for writing.
+
+     VIEWER - User defined subroutine to call every VERB iterations (see
+         keyword VERB above)to display the solution X.  The subroutine will be
+         called as:
+
+            viewer, x, extra;
+
+         where X is the current solution and EXTRA is the value of keyword
+         EXTRA (which to see).  If the viewer uses Yorick graphics window(s)
+         it may call "pause, 1;" before returning to make sure that graphics
+         get correctly updated.
+
+     PRINTER - User defined subroutine to call every VERB iterations (see
+         keyword VERB above) to printout iteration information.  The
+         subroutine will be called as:
+
+            printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
+
+         where OUTPUT is the value of keyword OUTPUT (which to see), ITER is
+         the number of iterations, EVAL is the number of function evaluations,
+         CPU is the elapsed CPU time in seconds, FX is the function value at
+         X, GNORM is the Euclidean norm of the gradient at X, STEPLEN is the
+         length of the step along the search direction, X is the current
+         solution and EXTRA is the value of keyword EXTRA (which to see).
+
+     SFTOL, SGTOL, SXTOL - Line search tolerance and safeguard
+        parameters (see op_csrch).
+
+   SEE ALSO: op_get_flags, op_csrch,
+             op_vmlmb_setup, op_vmlmb_next.
  */
 {
   local result, gx;
@@ -346,7 +384,7 @@ func op_mnb(f, x, &fx, &gx, fmin=,
     }
     bounds |= 2;
   }
-  
+
   /* Output stream. */
   if (! is_void(output)) {
     if (structof(output) == string) {
@@ -361,51 +399,19 @@ func op_mnb(f, x, &fx, &gx, fmin=,
   check_eval = (! is_void(maxeval));
 
   /* Viewer and printer subroutines. */
-  if (is_void(printer)) {
-    use_printer = 0n;
-  } else if (is_func(printer)) {
-    use_printer = 1n;
-  } else {
-    error, "bad value for keyword PRINTER";
-  }
-  if (is_void(viewer)) {
-    use_viewer = 0n;
-  } else if (is_func(viewer)) {
-    use_viewer = 1n;
-  } else {
-    error, "bad value for keyword VIEWER";
-  }
+  use_printer = ! is_void(printer);
+  use_viewer  = ! is_void(viewer);
 
-  
   /* Choose minimization method. */
   //if (is_void(frtol)) frtol = 1e-10;
   //if (is_void(fatol)) fatol = 1e-10;
-  if (! method) {
-    /* Variable metric. */
-    if (is_void(mem)) mem = min(n, 7);
-    if (is_void(fmin)) fmin = 0.0;
-    method = 0;
-    method_name = swrite(format="Limited Memory BFGS (VMLM with MEM=%d)",
-                         mem);
-    ws = op_vmlmb_setup(n, mem, /*fmin=fmin,*/
-                        fatol=fatol, frtol=frtol,
-                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
-  } else if (method < 0) {
-    if (is_void(mem)) mem = min(n, 7);
-    method_name = swrite(format="Limited Memory BFGS (LBFGS with MEM=%d)",
-                         mem);
-    ws = op_lbfgs_setup(n, mem);
-  } else if (method >= 1 && method <= 15) {
-    /* Conjugate gradient. */
-    mem = 2;
-    error, "conjugate-gradient method not yet implemented";
-    method_name = swrite(format="Conjugate Gradient (%s)",
-                         ["Fletcher-Reeves", "Polak-Ribiere",
-                          "Polak-Ribiere with non-negative BETA"](method&3));
-    ws = optim_cgmn_setup(method, fmin=fmin, fatol=fatol, frtol=frtol);
-  } else {
-    error, "bad METHOD";
-  }
+  //if (is_void(fmin)) fmin = 0.0;
+  if (is_void(mem)) mem = min(n, 7);
+  method_name = swrite(format="VMLMB %s bounds and MEM=%d",
+                       (bounds != 0 ? "with" : "without"), mem);
+  ws = op_vmlmb_setup(n, mem, /*fmin=fmin,*/
+                      fatol=fatol, frtol=frtol,
+                      sftol=sftol, sgtol=sgtol, sxtol=sxtol);
   step = 0.0;
   task = 1;
   eval = iter = 0;
@@ -419,17 +425,17 @@ func op_mnb(f, x, &fx, &gx, fmin=,
     local gx; /* to store the gradient */
     if (task == 1) {
       /* Evaluate function and gradient. */
-      if (bounds) {
-        if (bounds & 1) {
+      if (bounds != 0) {
+        if ((bounds & 1) == 1) {
           x = max(x, xmin);
         }
-        if (bounds & 2) {
+        if ((bounds & 2) == 2) {
           x = min(x, xmax);
         }
       }
       fx = (use_extra ? f(x, gx, extra) : f(x, gx));
       ++eval;
-      if (bounds) {
+      if (bounds != 0) {
         /* Figure out the set of free parameters:
          *   ACTIVE(i) = 0 if X(i) has a lower bound XMIN(i)
          *                 and X(i) = XMIN(i) and GX(i) >= 0
@@ -442,7 +448,7 @@ func op_mnb(f, x, &fx, &gx, fmin=,
         } else if (bounds == 2) {
           active = ((x < xmax) | (gx > 0.0));
         } else {
-          active = (((x > xmin) | (gx < 0.0)) | ((x < xmax) | (gx > 0.0)));
+          active = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
         }
       }
     }
@@ -485,31 +491,16 @@ func op_mnb(f, x, &fx, &gx, fmin=,
       }
       if (stop) {
         if (msg && (verb || (task != 3 && ! quiet))) {
-          write, output, format="# %s\n#\n", msg;
+          write, output, format="# %s\n", strtrim(msg, 2, blank=" \t\v\n\r");
         }
         return x;
       }
     }
-    
+
     /* Call optimizer. */
-    if (! method) {
-      task = op_vmlmb_next(x, fx, gx, ws, active);
-      iter = (*ws(2))(7);
-      step = (*ws(3))(22);
-    } else if (method < 0) {
-      task = op_lbfgs_next(x, fx, gx, ws);
-      if (task == 2 || task == 3) ++iter;
-      step = -1.0;
-    }
+    task = op_vmlmb_next(x, fx, gx, ws, active);
+    iter = (*ws(2))(7);
+    step = (*ws(3))(22);
   }
 }
 
-/*---------------------------------------------------------------------------*
- * Local Variables:                                                          *
- * mode: Yorick                                                              *
- * c-basic-offset: 2                                                         *
- * tab-width: 8                                                              *
- * fill-column: 78                                                           *
- * coding: latin-1                                                           *
- * End:                                                                      *
- *---------------------------------------------------------------------------*/
