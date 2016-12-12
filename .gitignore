@@ -4,12 +4,13 @@
 *.lo
 *.la
 lib*.a
-lib*.so
+*.so
 *.dll
 *.tar.gz
 *.txz
 *.tar.bz2
 *.zip
 *.log
+yorick/ywrap.c
 RCS/
 devel/
