@@ -212,11 +212,10 @@ func op_mnb(f, x, &fx, &gx, fmin=, extra=,
   if (! method) {
     /* Variable metric. */
     if (is_void(mem)) mem = min(n, 7);
-    if (is_void(fmin)) fmin = 0.0;
     method = 0;
     method_name = swrite(format="Limited Memory BFGS (VMLM with MEM=%d)",
                          mem);
-    ws = op_vmlmb_setup(n, mem, /*fmin=fmin,*/
+    ws = op_vmlmb_setup(n, mem, fmin=fmin,
                         fatol=fatol, frtol=frtol,
                         sftol=sftol, sgtol=sgtol, sxtol=sxtol);
   } else if (method < 0) {
@@ -245,7 +244,7 @@ func op_mnb(f, x, &fx, &gx, fmin=, extra=,
 
 func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
               verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
-              frtol=, fatol=, sftol=, sgtol=, sxtol=)
+              frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=, savebest=)
 /* DOCUMENT op_mnb(f, x);
          or op_mnb(f, x, fout, gout);
 
@@ -296,7 +295,17 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
      FATOL, FRTOL - Relative function change tolerance for convergence (default:
          1.5e-8).
 
-     GTOL - Gradient tolerance for convergence (default: 3.7e-11).
+     GATOL, GRTOL - Absolute and relative gradient tolerances for convergence
+         which is assumed whenever the Euclidean norm of the (projected)
+         gradient is smaller or equal max(GATOL, GRTOL*GINIT) where GINIT is
+         the Euclidean norm of the (projected) initila gradient.  By default,
+         GTAOL=0 and GRTOL=1e-6.
+
+     SAVEBEST - The default is to save the best variables among all tried ones
+         in order to always return the best solution encountered by the
+         algorithm.  This has however a memory cost, you may set this option
+         explicitly false (zero) to save a bit of memory, but in case of early
+         stopping, the returned solution may not be the best one.
 
      VERB - Verbose mode?  If non-nil and non-zero, print out information
          every VERB iterations and for the final one.
@@ -397,21 +406,45 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   /* Maximum number of iterations and function evaluations. */
   check_iter = (! is_void(maxiter));
   check_eval = (! is_void(maxeval));
+  if (check_eval && maxeval < 1) {
+    error, "MAXEVAL must be at least 1";
+  }
 
   /* Viewer and printer subroutines. */
-  use_printer = ! is_void(printer);
-  use_viewer  = ! is_void(viewer);
+  use_printer = (! is_void(printer));
+  use_viewer  = (! is_void(viewer));
+
+  /* Global convergence parameters. */
+  if (is_void(gatol)) {
+    gatol = 0.0;
+  } else if (is_scalar(gatol) && identof(gatol) <= Y_DOUBLE &&
+             gatol >= 0) {
+    gatol = double(gatol);
+  } else {
+    error, "bad value for GATOL";
+  }
+  if (is_void(grtol)) {
+    grtol = 0.0;
+  } else if (is_scalar(grtol) && identof(grtol) <= Y_DOUBLE &&
+             grtol >= 0 && grtol <= 1) {
+    grtol = double(grtol);
+  } else {
+    error, "bad value for GRTOL";
+  }
+  gtest = double(gatol);
+
+  /* By default, save the best solution so far. */
+  if (is_void(savebest)) savebest = 1n;
 
   /* Choose minimization method. */
-  //if (is_void(frtol)) frtol = 1e-10;
-  //if (is_void(fatol)) fatol = 1e-10;
-  //if (is_void(fmin)) fmin = 0.0;
   if (is_void(mem)) mem = min(n, 7);
   method_name = swrite(format="VMLMB %s bounds and MEM=%d",
                        (bounds != 0 ? "with" : "without"), mem);
-  ws = op_vmlmb_setup(n, mem, /*fmin=fmin,*/
+  ws = op_vmlmb_setup(n, mem, fmin=fmin,
                       fatol=fatol, frtol=frtol,
                       sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+
+  /* Start iterations. */
   step = 0.0;
   task = 1;
   eval = iter = 0;
@@ -421,50 +454,83 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     timer, elapsed;
     cpu_start = elapsed(1);
   }
+  if (structof(x) != double) {
+    x = double(x);
+  }
+  local best_x, best_fx, best_gnorm; /* best solution so far */
+  local gx, gnorm; /* the gradient and its (projected) norm */
+  local active;
   for (;;) {
-    local gx; /* to store the gradient */
     if (task == 1) {
       /* Evaluate function and gradient. */
-      if (bounds != 0) {
-        if ((bounds & 1) == 1) {
-          x = max(x, xmin);
+      if (check_eval && eval >= maxeval) {
+        stop = 1n;
+        msg = swrite(format="warning: too many function evaluations (%d)\n",
+                     eval);
+      } else {
+        if (bounds != 0) {
+          if ((bounds & 1) == 1) {
+            x = max(x, xmin);
+          }
+          if ((bounds & 2) == 2) {
+            x = min(x, xmax);
+          }
         }
-        if ((bounds & 2) == 2) {
-          x = min(x, xmax);
+        fx = (use_extra ? f(x, gx, extra) : f(x, gx));
+        ++eval;
+        if (bounds != 0) {
+          /* Figure out the set of free parameters:
+           *   ACTIVE(i) = 0 if X(i) has a lower bound XMIN(i)
+           *                 and X(i) = XMIN(i) and GX(i) >= 0
+           *               0 if X(i) value has an upper bound XMAX(i)
+           *                 and X(i) = XMAX(i) and GX(i) <= 0
+           *               1 (or any non-zero value) otherwise
+           */
+          if (bounds == 1) {
+            active = ((x > xmin) | (gx < 0.0));
+          } else if (bounds == 2) {
+            active = ((x < xmax) | (gx > 0.0));
+          } else {
+            active = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
+          }
         }
-      }
-      fx = (use_extra ? f(x, gx, extra) : f(x, gx));
-      ++eval;
-      if (bounds != 0) {
-        /* Figure out the set of free parameters:
-         *   ACTIVE(i) = 0 if X(i) has a lower bound XMIN(i)
-         *                 and X(i) = XMIN(i) and GX(i) >= 0
-         *               0 if X(i) value has an upper bound XMAX(i)
-         *                 and X(i) = XMAX(i) and GX(i) <= 0
-         *               1 (or any non-zero value) otherwise
-         */
-        if (bounds == 1) {
-          active = ((x > xmin) | (gx < 0.0));
-        } else if (bounds == 2) {
-          active = ((x < xmax) | (gx > 0.0));
+        if (eval == 1 && grtol > 0) {
+          gnorm = (bounds != 0 ? op_norm2(active*gx) : op_norm2(gx));
+          gtest = max(gtest, grtol*gnorm);
         } else {
-          active = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
+          gnorm = -1; // to indicate that it must be updated if needed
+        }
+        if (savebest && (eval == 1 || fx < best_fx)) {
+          best_x = x;
+          best_fx = fx;
+          if (gnorm < 0) {
+            gnorm = (bounds != 0 ? op_norm2(active*gx) : op_norm2(gx));
+          }
+          best_gnorm = gnorm;
         }
       }
     }
 
     /* Check for convergence. */
     if (task != 1 || eval == 1) {
+      if (gnorm < 0) {
+        gnorm = (bounds != 0 ? op_norm2(active*gx) : op_norm2(gx));
+      }
       if (task > 2) {
         stop = 1n;
         msg = op_vmlmb_msg(ws);
+      } else if (gnorm <= gtest) {
+        stop = 1n;
+        msg = swrite(format="convergence (%s)\n", "gradient small enough");
       } else if (check_iter && iter > maxiter) {
         stop = 1n;
         msg = swrite(format="warning: too many iterations (%d)\n", iter);
-      } else if (check_eval && eval > maxeval) {
-        stop = 1n;
-        msg = swrite(format="warning: too many function evaluations (%d)\n",
-                     eval);
+      }
+      if (stop && savebest) {
+        /* restore best solution so far. */
+        eq_nocopy, x, best_x;
+        fx = best_fx;
+        gnorm = best_gnorm;
       }
       if (verb) {
         if (eval == 1 && ! use_printer) {
@@ -477,7 +543,6 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         if (stop || ! (iter % verb)) {
           timer, elapsed;
           cpu = 1e3*(elapsed(1) - cpu_start);
-          gnorm = sqrt(sum(gx*gx));
           if (use_printer) {
             printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
           } else {
@@ -504,3 +569,8 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   }
 }
 
+func op_norm2(x) { return sqrt(sum(x*x)); }
+/* DOCUMENT op_norm2(x);
+
+     Yield the Euclidean norm of X.
+*/
