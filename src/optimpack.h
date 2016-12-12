@@ -628,8 +628,8 @@ extern double op_vmlmb_get_fatol(const char csave[], const op_integer_t isave[],
 				 const double dsave[]);
 extern double op_vmlmb_get_epsilon(const char csave[], const op_integer_t isave[],
 				   const double dsave[]);
-extern double op_vmlmb_get_costheta(const char csave[], const op_integer_t isave[],
-				    const double dsave[]);
+extern double op_vmlmb_get_delta(const char csave[], const op_integer_t isave[],
+                                 const double dsave[]);
 extern op_integer_t op_vmlmb_get_iter(const char csave[],
 				      const op_integer_t isave[],
 				      const double dsave[]);
