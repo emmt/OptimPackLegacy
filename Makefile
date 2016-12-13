@@ -71,7 +71,7 @@ distrib:
 	  echo >&2 "bad VERSION"; \
 	  return 1; \
 	fi; \
-	pkgdir=optimpack-$$version; \
+	pkgdir=OptimPack-$$version; \
 	archive=$$pkgdir.tar.bz2; \
 	if test -e "$$pkgdir"; then \
 	  echo >&2 "error: $$pkgdir already exists"; \
