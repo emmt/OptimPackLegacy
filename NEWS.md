@@ -1,3 +1,10 @@
+**Version 1.3.3 (2016-12-13)**
+
+* Parameter `delta > 0` is used to specify a relative small step size.
+
+* Parameter `epsilon ≥ 0` is used to check for the sufficient descent
+  condition.
+
 * In Yorick interface:
 
   - The norm of the *projected* gradient is displayed and used to check for the
