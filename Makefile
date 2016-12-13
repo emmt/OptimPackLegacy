@@ -54,13 +54,10 @@ IDL_FILES = \
     README
 
 IDL_CONTRIB_SRC = $(srcdir)/idl/contrib
-IDL_CONTRIB_FILES = fmin_op.pro  Makefile.OptimPack
+IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
 
 YORICK_SRC = $(srcdir)/yorick
-YORICK_FILES = Makefile \
-    lbfgsb.f lbfgsb.i lbfgsb_wrapper.c \
-    lbfgs.f lbfgs.i lbfgs_wrapper.c \
-    OptimPack1.i OptimPack1-test.i optimpack.c
+YORICK_FILES = Makefile OptimPack1.i OptimPack1-test.i OptimPack1-test.out
 
 all:
 	@echo "No default target"
