@@ -28,18 +28,8 @@
 
 srcdir = .
 
-# Comment out the following definitions if you don't want LBFGS:
-#LBFGS_OBJS = lbfgs.o lbfgs_wrapper.o
-#LBFGS_I    = lbfgs.i
-
-# Comment out the following definitions if you don't want LBFGSB:
-#LBFGS_OBJS = lbfgsb.o lbfgsb_wrapper.o
-#LBFGS_I    = lbfgsb.i
-
-OPTIMPACK_OBJS = op_lnsrch.o op_utils.o op_vmlmb.o
-
 # ---------------------------------------------------------------- Yorick setup
-# these values filled in by    yorick -batch make.i
+# these values filled in by `yorick -batch make.i`
 Y_MAKEDIR=
 Y_EXE=
 Y_EXE_PKGS=
@@ -48,7 +38,7 @@ Y_EXE_SITE=
 
 # ---------------------------------------------------------- optimization flags
 
-# options for make command line, e.g.-   make COPT=-g TGT=exe
+# options for make command line, e.g. `make COPT=-g TGT=exe`
 COPT=$(COPT_DEFAULT)
 TGT=$(DEFAULT_TGT)
 
@@ -57,12 +47,12 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=OptimPack1
 PKG_I=OptimPack1.i
 
-OBJS= $(LBFGS_OBJS) $(LBFGSB_OBJS) $(OPTIMPACK_OBJS)
+OBJS= op_lnsrch.o op_utils.o op_vmlmb.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
 
-# PKG_DEPLIBS=-Lsomedir -lsomelib   for dependencies of this package
+# `PKG_DEPLIBS=-Lsomedir -lsomelib` for dependencies of this package
 PKG_DEPLIBS=
 # set compiler (or rarely loader) flags specific to this package
 PKG_CFLAGS= -DOP_INTEGER=long
@@ -76,7 +66,7 @@ EXTRA_PKGS=$(Y_EXE_PKGS)
 PKG_CLEAN=
 
 # autoload file for this package, if any
-PKG_I_START=$(LBFGSB_I) $(LBFGS_I)
+PKG_I_START=
 # non-pkg.i include files for this package, if any
 PKG_I_EXTRA=
 
@@ -89,9 +79,13 @@ PKG_I_EXTRA=
 PKG_I_DEPS=$(PKG_I)
 Y_DISTMAKE=distmake
 
+ifeq (,$(strip $(Y_MAKEDIR)))
+$(info *** WARNING: Y_MAKEDIR not defined, you may run 'yorick -batch make.i' first)
+else
 include $(Y_MAKEDIR)/Make.cfg
 include $(Y_MAKEDIR)/Makepkg
 include $(Y_MAKEDIR)/Make$(TGT)
+endif
 
 # override macros Makepkg sets for rules and other macros
 # Y_HOME and Y_SITE in Make.cfg may not be correct (e.g.- relocatable)
@@ -114,17 +108,5 @@ OPT_SRC = $(srcdir)/../src
 
 op_%.o: $(OPT_SRC)/op_%.c $(OPT_SRC)/optimpack.h
 	$(CC) $(CPPFLAGS) -I$(OPT_SRC) $(CFLAGS) -o $@ -c $<
-
-# L-BGFS-B stuff:
-lbfgsb_wrapper.o: lbfgsb_wrapper.c
-	$(CC) $(CFLAGS) -c $<
-lbfgsb.o: lbfgsb.f
-	$(FC) $(FFLAGS) -c $<
-
-# L-BGFS stuff:
-lbfgs_wrapper.o: lbfgs_wrapper.c
-	$(CC) $(CFLAGS) -c $<
-lbfgs.o: lbfgs.f
-	$(FC) $(FFLAGS) -c $<
 
 # ------------------------------------------------------------- end of Makefile
