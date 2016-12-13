@@ -1,9 +1,13 @@
+
+* Rewrite VMLMB code for better readability, remove unecessary variables and
+  avoid unecessary computations.
+
 **Version 1.3.3 (2016-12-13)**
 
 * Parameter `delta > 0` is used to specify a relative small step size.
 
 * Parameter `epsilon ≥ 0` is used to check for the sufficient descent
-  condition.
+  condition.  Seems to speed up convergence in many cases.
 
 * In Yorick interface:
 

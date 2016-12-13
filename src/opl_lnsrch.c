@@ -1,7 +1,7 @@
 /*
- * op_lnsrch.h --
+ * opl_lnsrch.h --
  *
- * Line search routines for OptimPack library.
+ * Line search routines for OptimPackLegacy library.
  *
  *-----------------------------------------------------------------------------
  *
@@ -29,7 +29,7 @@
 
 #include <math.h>
 #include <string.h>
-#include "optimpack.h"
+#include "optimpacklegacy.h"
 
 /*---------------------------------------------------------------------------*/
 
@@ -51,12 +51,12 @@
 #define INDEX_OF_WIDTH    10
 #define INDEX_OF_WIDTH1   11
 
-#define SET_TASK(val, str) *task = (val); op_mcopy("op_csrch: " str, csave)
+#define SET_TASK(val, str) *task = (val); opl_mcopy("opl_csrch: " str, csave)
 
-int op_csrch(double f, double g, double *stp_ptr,
-	     double ftol, double gtol, double xtol,
-	     double stpmin, double stpmax, int *task,
-	     char csave[], op_integer_t isave[], double dsave[])
+int opl_csrch(double f, double g, double *stp_ptr,
+              double ftol, double gtol, double xtol,
+              double stpmin, double stpmax, int *task,
+              char csave[], opl_integer_t isave[], double dsave[])
 {
   const double zero = 0.0;
   const double xtrapl = 1.1;
@@ -69,12 +69,12 @@ int op_csrch(double f, double g, double *stp_ptr,
   double stmin, stmax;
   double stp = *stp_ptr;
 
-  if (*task == OP_TASK_START) {
+  if (*task == OPL_TASK_START) {
     /* Check the input arguments for errors.
        Exit if there are errors on input. */
-#define RETURN_ERROR(I,S) SET_TASK(OP_TASK_ERROR, S); return (I)
+#define RETURN_ERROR(I,S) SET_TASK(OPL_TASK_ERROR, S); return (I)
     if (stpmax < stpmin) { RETURN_ERROR( 0, "STPMAX < STPMIN"); }
-    if (stpmin < zero)   { RETURN_ERROR(-3,"STPMIN < 0"); }
+    if (stpmin < zero)   { RETURN_ERROR(-3, "STPMIN < 0"); }
     if (xtol < zero)     { RETURN_ERROR(-4, "XTOL < 0"); }
     if (ftol <= zero)    { RETURN_ERROR(-5, "FTOL <= 0"); }
     if (gtol <= zero)    { RETURN_ERROR(-6, "GTOL <= 0"); }
@@ -104,7 +104,7 @@ int op_csrch(double f, double g, double *stp_ptr,
     dsave[INDEX_OF_STMAX]  = stp + stp*xtrapu;
     dsave[INDEX_OF_WIDTH]  = stpmax - stpmin;
     dsave[INDEX_OF_WIDTH1] = 2.0*(stpmax - stpmin);
-    *task = OP_TASK_FG;
+    *task = OPL_TASK_FG;
     return 1;
   }
 
@@ -133,19 +133,19 @@ int op_csrch(double f, double g, double *stp_ptr,
   /* Test for termination: convergence or warnings. */
   if (f <= ftest && fabs(g) <= gtol*(-ginit)) {
     /* Strong Wolfe conditions both satisfied. */
-    SET_TASK(OP_TASK_CONV, "convergence of line search");
+    SET_TASK(OPL_TASK_CONV, "convergence of line search");
     info = 2;
   } else if (stp == stpmin && (f > ftest || g >= gtest)) {
-    SET_TASK(OP_TASK_WARN, "STP = STPMIN");
+    SET_TASK(OPL_TASK_WARN, "STP = STPMIN");
     info = 3;
   } else if (stp == stpmax && f <= ftest && g <= gtest) {
-    SET_TASK(OP_TASK_WARN, "STP = STPMAX");
+    SET_TASK(OPL_TASK_WARN, "STP = STPMAX");
     info = 4;
   } else if (brackt && stmax - stmin <= xtol*stmax) {
-    SET_TASK(OP_TASK_WARN, "XTOL test satisfied");
+    SET_TASK(OPL_TASK_WARN, "XTOL test satisfied");
     info = 5;
   } else if (brackt && (stp <= stmin || stp >= stmax)) {
-    SET_TASK(OP_TASK_WARN, "rounding errors prevent progress");
+    SET_TASK(OPL_TASK_WARN, "rounding errors prevent progress");
     info = 6;
   } else {
 
@@ -163,13 +163,13 @@ int op_csrch(double f, double g, double *stp_ptr,
       double gxm = gx - gtest;
       double gym = gy - gtest;
 
-      /* Call op_cstep to update STX, STY, and to compute the new step. */
-      info = op_cstep(&stx, &fxm, &gxm,
-		      &sty, &fym, &gym,
-		      &stp,  fm,   gm,
-		      &brackt, stmin, stmax, csave);
+      /* Call opl_cstep to update STX, STY, and to compute the new step. */
+      info = opl_cstep(&stx, &fxm, &gxm,
+                       &sty, &fym, &gym,
+                       &stp,  fm,   gm,
+                       &brackt, stmin, stmax, csave);
       if (info <= 0) {
-	*task = OP_TASK_ERROR;
+	*task = OPL_TASK_ERROR;
 	return info;
       }
 
@@ -181,13 +181,13 @@ int op_csrch(double f, double g, double *stp_ptr,
 
     } else {
 
-      /* Call op_cstep to update STX, STY, and to compute the new step. */
-      info = op_cstep(&stx, &fx, &gx,
-		      &sty, &fy, &gy,
-		      &stp,  f,   g,
-		      &brackt, stmin, stmax, csave);
+      /* Call opl_cstep to update STX, STY, and to compute the new step. */
+      info = opl_cstep(&stx, &fx, &gx,
+                       &sty, &fy, &gy,
+                       &stp,  f,   g,
+                       &brackt, stmin, stmax, csave);
       if (info <= 0) {
-	*task = OP_TASK_ERROR;
+	*task = OPL_TASK_ERROR;
 	return info;
       }
 
@@ -226,7 +226,7 @@ int op_csrch(double f, double g, double *stp_ptr,
 
     /* Obtain another function and derivative. */
     if (csave) csave[0] = 0;
-    *task = OP_TASK_FG;
+    *task = OPL_TASK_FG;
     info = 1;
   }
 
@@ -252,11 +252,11 @@ int op_csrch(double f, double g, double *stp_ptr,
 
 /*---------------------------------------------------------------------------*/
 
-int op_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
-	     double *sty_ptr, double *fy_ptr, double *dy_ptr,
-	     double *stp_ptr, double  fp,     double  dp,
-	     int *brackt, double stpmin, double stpmax,
-	     char csave[])
+int opl_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
+              double *sty_ptr, double *fy_ptr, double *dy_ptr,
+              double *stp_ptr, double  fp,     double  dp,
+              int *brackt, double stpmin, double stpmax,
+              char csave[])
 {
   /* Constants. */
   const double zero = 0.0;
@@ -275,14 +275,14 @@ int op_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
 
   /* Check the input parameters for errors. */
   if (*brackt && (stx < sty ? (stp <= stx || stp >= sty)
-		            : (stp >= stx || stp <= sty))) {
-    op_mcopy("op_cstep: STP outside bracket (STX,STY)", csave);
+                  : (stp >= stx || stp <= sty))) {
+    opl_mcopy("opl_cstep: STP outside bracket (STX,STY)", csave);
     return -2;
   } else if (dx*(stp - stx) >= zero) {
-    op_mcopy("op_cstep: descent condition violated", csave);
+    opl_mcopy("opl_cstep: descent condition violated", csave);
     return -1;
   } else if (stpmax < stpmin) {
-    op_mcopy("op_cstep: STPMAX < STPMIN", csave);
+    opl_mcopy("opl_cstep: STPMAX < STPMIN", csave);
     return 0;
   }
 

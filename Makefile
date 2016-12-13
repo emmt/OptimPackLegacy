@@ -1,7 +1,7 @@
 #
 # Makefile --
 #
-# Makefile for OptimPack.
+# Makefile for OptimPackLegacy.
 #
 #------------------------------------------------------------------------------
 #
@@ -35,7 +35,7 @@ DISTRIB_SRC = $(srcdir)
 DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md optimpack.bib
 
 CODE_SRC = $(srcdir)/src
-CODE_FILES = op_limits.h op_lnsrch.c optimpack.h op_utils.c op_vmlmb.c
+CODE_FILES = opl_limits.h opl_lnsrch.c opl_utils.c opl_vmlmb.c optimpacklegacy.h
 
 IDL_SRC = $(srcdir)/idl
 IDL_FILES = \
@@ -57,7 +57,8 @@ IDL_CONTRIB_SRC = $(srcdir)/idl/contrib
 IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
 
 YORICK_SRC = $(srcdir)/yorick
-YORICK_FILES = Makefile OptimPack1.i OptimPack1-test.i OptimPack1-test.out
+YORICK_FILES = Makefile optimpacklegacy.i \
+    optimpacklegacy-test.i optimpacklegacy-test.out
 
 all:
 	@echo "No default target"

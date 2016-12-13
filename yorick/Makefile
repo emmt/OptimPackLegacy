@@ -1,7 +1,7 @@
 #
 # Makefile --
 #
-# Makefile for YOP (Yorick + OptimPack).
+# Makefile for YOPL (Yorick + OptimPackLegacy).
 #
 #------------------------------------------------------------------------------
 #
@@ -30,11 +30,12 @@ srcdir = .
 
 # ---------------------------------------------------------------- Yorick setup
 # these values filled in by `yorick -batch make.i`
-Y_MAKEDIR=
-Y_EXE=
+Y_MAKEDIR=/home/eric/work/code/easy-yorick/current/arch/linux-x86_64/yorick
+Y_EXE=/home/eric/work/code/easy-yorick/current/arch/linux-x86_64/yorick/bin/yorick
 Y_EXE_PKGS=
-Y_EXE_HOME=
-Y_EXE_SITE=
+Y_EXE_HOME=/home/eric/work/code/easy-yorick/current/arch/linux-x86_64/yorick
+Y_EXE_SITE=/home/eric/work/code/easy-yorick/current/arch/linux-x86_64/yorick
+Y_HOME_PKG=
 
 # ---------------------------------------------------------- optimization flags
 
@@ -44,10 +45,10 @@ TGT=$(DEFAULT_TGT)
 
 # ----------------------------------------------------- macros for this package
 
-PKG_NAME=OptimPack1
-PKG_I=OptimPack1.i
+PKG_NAME=optimpacklegacy
+PKG_I=optimpacklegacy.i
 
-OBJS= op_lnsrch.o op_utils.o op_vmlmb.o
+OBJS= opl_lnsrch.o opl_utils.o opl_vmlmb.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -55,7 +56,7 @@ PKG_EXENAME=yorick
 # `PKG_DEPLIBS=-Lsomedir -lsomelib` for dependencies of this package
 PKG_DEPLIBS=
 # set compiler (or rarely loader) flags specific to this package
-PKG_CFLAGS= -DOP_INTEGER=long
+PKG_CFLAGS= -DOPL_INTEGER=long
 PKG_LDFLAGS=
 
 # list of additional package names you want in PKG_EXENAME
@@ -106,7 +107,7 @@ OPT_SRC = $(srcdir)/../src
 #myfunc.o: myapi.h myfunc.c
 #	$(CC) $(CPPFLAGS) $(CFLAGS) -DMY_SWITCH -o $@ -c myfunc.c
 
-op_%.o: $(OPT_SRC)/op_%.c $(OPT_SRC)/optimpack.h
+opl_%.o: $(OPT_SRC)/opl_%.c $(OPT_SRC)/optimpacklegacy.h
 	$(CC) $(CPPFLAGS) -I$(OPT_SRC) $(CFLAGS) -o $@ -c $<
 
 # ------------------------------------------------------------- end of Makefile

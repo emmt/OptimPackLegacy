@@ -1,13 +1,13 @@
 /*
- * OptimPack1.i --
+ * optimpacklegacy.i --
  *
- * Main startup file for OptimPack extension of Yorick.
+ * Main startup file for OptimPackLegacy extension of Yorick.
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
- *
  * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
+ *
+ * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
  *
  * OptimPack is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free
@@ -27,17 +27,17 @@
  *-----------------------------------------------------------------------------
  */
 
-if (is_func(plug_in)) plug_in, "OptimPack1";
+if (is_func(plug_in)) plug_in, "optimpacklegacy";
 
-extern __op_csrch;
+extern __opl_csrch;
 /* PROTOTYPE
-   int op_csrch(double f, double g, double array stp,
+   int opl_csrch(double f, double g, double array stp,
                 double ftol, double gtol, double xtol,
 		double stpmin, double stpmax, int array task,
 		char array csave, long array isave, double array dsave);
 */
 
-func op_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
+func opl_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
               &csave, isave, dsave)
 {
   if (numberof(task) != 1) error, "TASK must be a scalar";
@@ -47,14 +47,14 @@ func op_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
     error, "bad DSAVE array";
   itask = int(task);
   cbuf = array(char, 128);
-  info = __op_csrch(f, g, stp, ftol, gtol, xtol, stpmin, stpmax, itask,
+  info = __opl_csrch(f, g, stp, ftol, gtol, xtol, stpmin, stpmax, itask,
                     cbuf, isave, dsave);
   task = long(itask);
   csave = string((task == 1 ? 0 : &cbuf));
   return long(info);
 }
 
-func op_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
+func opl_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
                     delta=, epsilon=)
 {
   csave = array(char, 128);
@@ -67,19 +67,19 @@ func op_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
   if (is_void(sxtol)) sxtol = 0.1;
   if (is_void(delta)) delta = 1e-3;
   if (is_void(epsilon)) epsilon = 0.0;
-  task = long(__op_vmlmb_first(n, m, fatol, frtol, sftol, sgtol, sxtol,
+  task = long(__opl_vmlmb_setup(n, m, fatol, frtol, sftol, sgtol, sxtol,
                                delta, epsilon, csave, isave, dsave));
   if (task != 1) error, string(&csave);
   ws = [&csave, &isave, &dsave];
   if (! is_void(fmin)) {
-    op_vmlmb_set_fmin, ws, fmin;
+    opl_vmlmb_set_fmin, ws, fmin;
   }
   return ws;
 }
 
-func op_vmlmb_msg(ws) { return string(ws(1)); }
+func opl_vmlmb_msg(ws) { return string(ws(1)); }
 
-func op_vmlmb_next(x, &f, &g, ws, active, h)
+func opl_vmlmb_next(x, &f, &g, ws, isfree, h)
 {
   local csave; eq_nocopy, csave, *ws(1);
   if (structof(csave) != char || numberof(csave) != 128)
@@ -102,151 +102,80 @@ func op_vmlmb_next(x, &f, &g, ws, active, h)
   if (structof(g) != double || numberof(g) != n)
     error, "bad gradient array G";
 
-  if (! is_void(active) && (structof(active) != int ||
-                            numberof(active) != n )) error, "bad array ACTIVE";
+  if (! is_void(isfree) && (structof(isfree) != int ||
+                            numberof(isfree) != n )) error, "bad array ISFREE";
 
   if (! is_void(h) && (structof(h) != double ||
                        numberof(h) != n )) error, "bad array H";
 
-  return long(__op_vmlmb_next(x, f, g, &active, &h, csave, isave, dsave));
+  return long(__opl_vmlmb_next(x, f, g, &isfree, &h, csave, isave, dsave));
 }
 
-extern __op_vmlmb_next;
+extern __opl_vmlmb_next;
 /* PROTOTYPE
-   int op_vmlmb_next(double array x, double array f, double array g,
-                     pointer active, pointer h,
-		     char array csave, long array isave, double array dsave);
+   int opl_vmlmb_next(double array x, double array f, double array g,
+                      pointer isfree, pointer h,
+		      char array csave, long array isave, double array dsave);
 */
 
-//extern op_vmlmb_first;
-///* DOCUMENT op_vmlmb_first(n, m, fatol, frtol, sftol, sgtol, sxtol,
-//                           csave, isave, dsave);
-//     The returned value should be 1 unless there is an error.
-//*/
-
-extern __op_vmlmb_first;
+extern __opl_vmlmb_setup;
 /* PROTOTYPE
-   int op_vmlmb_first(long n, long m,
-                      double fatol, double frtol,
-                      double sftol, double sgtol, double sxtol,
-                      double delta, double epsilon,
-                      char array csave, long array isave, double array dsave);
+   int opl_vmlmb_setup(long n, long m,
+                       double fatol, double frtol,
+                       double sftol, double sgtol, double sxtol,
+                       double delta, double epsilon,
+                       char array csave, long array isave, double array dsave);
 */
 
-extern __op_vmlmb_set_fmin;
+extern __opl_vmlmb_set_fmin;
 /* PROTOTYPE
-   int op_vmlmb_set_fmin(char array csave,
-                         long array isave,
-                         double array dsave,
-                         double new_value,
-                         double array old_value);
+   int opl_vmlmb_set_fmin(char array csave,
+                          long array isave,
+                          double array dsave,
+                          double new_value,
+                          double array old_value);
 */
-extern __op_vmlmb_get_fmin;
+extern __opl_vmlmb_get_fmin;
 /* PROTOTYPE
-   int op_vmlmb_get_fmin(char array csave,
+   int opl_vmlmb_get_fmin(char array csave,
                          long array isave,
                          double array dsave,
                          double array value);
 */
 
-local op_vmlmb_set_fmin;
-local op_vmlmb_get_fmin;
-/* DOCUMENT old = op_vmlmb_set_fmin(ws, fmin);
-         or fmin = op_vmlmb_get_fmin(ws);
+local opl_vmlmb_set_fmin;
+local opl_vmlmb_get_fmin;
+/* DOCUMENT old = opl_vmlmb_set_fmin(ws, fmin);
+         or fmin = opl_vmlmb_get_fmin(ws);
 
-      The function op_vmlmb_set_fmin set the value of FMIN in workspace WS and
+      The function opl_vmlmb_set_fmin set the value of FMIN in workspace WS and
       returns the previous value of FMIN if any (nil otherwise).
 
-      The function op_vmlmb_get_fmin returns the actual value of FMIN in
+      The function opl_vmlmb_get_fmin returns the actual value of FMIN in
       workspace WS or nil if FMIN has never been set.
 
-   SEE ALSO: op_vmlmb_first.
+   SEE ALSO: opl_vmlmb_setup.
  */
-func op_vmlmb_set_fmin(ws, new)
+func opl_vmlmb_set_fmin(ws, new)
 {
   old = 0.0;
-  if (__op_vmlmb_set_fmin(*ws(1), *ws(2), *ws(3), new, old)) {
+  if (__opl_vmlmb_set_fmin(*ws(1), *ws(2), *ws(3), new, old)) {
     return old;
   }
 }
-func op_vmlmb_get_fmin(ws)
+func opl_vmlmb_get_fmin(ws)
 {
   fmin = 0.0;
-  if (__op_vmlmb_get_fmin(*ws(1), *ws(2), *ws(3), fmin)) {
+  if (__opl_vmlmb_get_fmin(*ws(1), *ws(2), *ws(3), fmin)) {
     return fmin;
   }
 }
 
-func op_mnb(f, x, &fx, &gx, fmin=, extra=,
-            xmin=, xmax=, method=, mem=, verb=, quiet=,
-            viewer=, printer=,
-            maxiter=, maxeval=, output=,
-            frtol=, fatol=, sftol=, sgtol=, sxtol=)
-/* DOCUMENT op_mnb(f, x);
-         or op_mnb(f, x, fout, gout);
-
-     This is a wrapper to preserve compatibility with previous versions of
-     OptimPack. See `op_vmlmb` for a full documentation.
-
-   SEE ALSO op_vmlmb.
-*/
-{
-  /* Choose minimization method.
-     FIXME: METHOD - Scalar integer which  defines the optimization method to use.
-     FIXME:     Conjugate  gradient   algorithm  is  used  if  one   of  the  bits
-     FIXME:     OP_FLAG_POLAK_RIBIERE,         OP_FLAG_FLETCHER_REEVES,         or
-     FIXME:     OP_FLAG_HESTENES_STIEFEL  is  set;  otherwise,  a  limited  memory
-     FIXME:     variable  metric algorithm  (VMLM-B) is  used.  If  METHOD  is not
-     FIXME:     specified and  if MEM=0, a conjugate gradient  search is attempted
-     FIXME:     with flags: (OP_FLAG_UPDATE_WITH_GP |
-     FIXME:                  OP_FLAG_SHANNO_PHUA    |
-     FIXME:                  OP_FLAG_MORE_THUENTE   |
-     FIXME:                  OP_FLAG_POLAK_RIBIERE  |
-     FIXME:                  OP_FLAG_POWELL_RESTART)
-     FIXME:     otherwise VMLM-B is used with flags: (OP_FLAG_UPDATE_WITH_GP |
-     FIXME:                                           OP_FLAG_SHANNO_PHUA    |
-     FIXME:                                           OP_FLAG_MORE_THUENTE).
-     FIXME:     See documentation  of op_get_flags to  figure out the  allowed bit
-     FIXME:     flags and their meaning.
-  */
-  if (! method) {
-    /* Variable metric. */
-    if (is_void(mem)) mem = min(n, 7);
-    method = 0;
-    method_name = swrite(format="Limited Memory BFGS (VMLM with MEM=%d)",
-                         mem);
-    ws = op_vmlmb_setup(n, mem, fmin=fmin,
-                        fatol=fatol, frtol=frtol,
-                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
-  } else if (method < 0) {
-    if (is_void(mem)) mem = min(n, 7);
-    method_name = swrite(format="Limited Memory BFGS (LBFGS with MEM=%d)",
-                         mem);
-    ws = op_lbfgs_setup(n, mem);
-  } else if (method >= 1 && method <= 15) {
-    /* Conjugate gradient. */
-    mem = 2;
-    error, "conjugate-gradient method not yet implemented";
-    method_name = swrite(format="Conjugate Gradient (%s)",
-                         ["Fletcher-Reeves", "Polak-Ribiere",
-                          "Polak-Ribiere with non-negative BETA"](method&3));
-    ws = optim_cgmn_setup(method, fmin=fmin, fatol=fatol, frtol=frtol);
-  } else {
-    error, "bad METHOD";
-  }
-  return op_vmlmb(f, x, fx, gx, fmin=fmin, extra=extra,
-                  xmin=xmin, xmax=xmax, flags=method, mem=mem,
-                  verb=verb, quiet=quiet, viewer=viewer, printer=printer,
-                  maxiter=maxiter, maxeval=maxeval, output=output,
-                  frtol=frtol, fatol=fatol,
-                  sftol=sftol, sgtol=sgtol, sxtol=sxtol);
-}
-
-func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
+func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
               verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
               frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=, savebest=)
-/* DOCUMENT op_mnb(f, x);
-         or op_mnb(f, x, fout, gout);
+/* DOCUMENT opl_vmlmb(f, x);
+         or opl_vmlmb(f, x, fout, gout);
 
      Returns a minimum of a multivariate function by an iterative minimization
      algorithm (limited memory variable metric) possibly with simple bound
@@ -341,16 +270,18 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
          solution and EXTRA is the value of keyword EXTRA (which to see).
 
      SFTOL, SGTOL, SXTOL - Line search tolerance and safeguard
-        parameters (see op_csrch).
+        parameters (see opl_csrch).
 
-   SEE ALSO: op_get_flags, op_csrch,
-             op_vmlmb_setup, op_vmlmb_next.
+   SEE ALSO: opl_get_flags, opl_csrch,
+             opl_vmlmb_setup, opl_vmlmb_next.
  */
 {
   local result, gx;
 
+  LONG_MAX = ((sizeof(long)*8 - 1) << 1) - 1;
+
   /* Get function. */
-  if (! is_func(f)) {
+  if (is_void(f) || is_array(f)) {
     error, "expecting a function for argument F";
   }
   use_extra = (! is_void(extra));
@@ -404,9 +335,9 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   }
 
   /* Maximum number of iterations and function evaluations. */
-  check_iter = (! is_void(maxiter));
-  check_eval = (! is_void(maxeval));
-  if (check_eval && maxeval < 1) {
+  if (is_void(maxiter)) maxiter = LONG_MAX;
+  if (is_void(maxeval)) maxeval = LONG_MAX;
+  if (maxeval < 1) {
     error, "MAXEVAL must be at least 1";
   }
 
@@ -440,9 +371,9 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   if (is_void(mem)) mem = min(n, 7);
   method_name = swrite(format="VMLMB %s bounds and MEM=%d",
                        (bounds != 0 ? "with" : "without"), mem);
-  ws = op_vmlmb_setup(n, mem, fmin=fmin,
-                      fatol=fatol, frtol=frtol,
-                      sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+  ws = opl_vmlmb_setup(n, mem, fmin=fmin,
+                       fatol=fatol, frtol=frtol,
+                       sftol=sftol, sgtol=sgtol, sxtol=sxtol);
 
   /* Start iterations. */
   step = 0.0;
@@ -459,11 +390,11 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   }
   local best_x, best_fx, best_gnorm; /* best solution so far */
   local gx, gnorm; /* the gradient and its (projected) norm */
-  local active;
+  local isfree;
   for (;;) {
     if (task == 1) {
       /* Evaluate function and gradient. */
-      if (check_eval && eval >= maxeval) {
+      if (eval >= maxeval) {
         stop = 1n;
         msg = swrite(format="warning: too many function evaluations (%d)\n",
                      eval);
@@ -479,23 +410,18 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         fx = (use_extra ? f(x, gx, extra) : f(x, gx));
         ++eval;
         if (bounds != 0) {
-          /* Figure out the set of free parameters:
-           *   ACTIVE(i) = 0 if X(i) has a lower bound XMIN(i)
-           *                 and X(i) = XMIN(i) and GX(i) >= 0
-           *               0 if X(i) value has an upper bound XMAX(i)
-           *                 and X(i) = XMAX(i) and GX(i) <= 0
-           *               1 (or any non-zero value) otherwise
-           */
+          // FIXME:
+          /* Determine the set of free variables. */
           if (bounds == 1) {
-            active = ((x > xmin) | (gx < 0.0));
+            isfree = ((x > xmin) | (gx < 0.0));
           } else if (bounds == 2) {
-            active = ((x < xmax) | (gx > 0.0));
+            isfree = ((x < xmax) | (gx > 0.0));
           } else {
-            active = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
+            isfree = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
           }
         }
         if (eval == 1 && grtol > 0) {
-          gnorm = (bounds != 0 ? op_norm2(active*gx) : op_norm2(gx));
+          gnorm = (bounds != 0 ? opl_norm2(isfree*gx) : opl_norm2(gx));
           gtest = max(gtest, grtol*gnorm);
         } else {
           gnorm = -1; // to indicate that it must be updated if needed
@@ -504,73 +430,85 @@ func op_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
           best_x = x;
           best_fx = fx;
           if (gnorm < 0) {
-            gnorm = (bounds != 0 ? op_norm2(active*gx) : op_norm2(gx));
+            gnorm = (bounds != 0 ? opl_norm2(isfree*gx) : opl_norm2(gx));
           }
           best_gnorm = gnorm;
         }
       }
     }
-
-    /* Check for convergence. */
-    if (task != 1 || eval == 1) {
-      if (gnorm < 0) {
-        gnorm = (bounds != 0 ? op_norm2(active*gx) : op_norm2(gx));
-      }
-      if (task > 2) {
-        stop = 1n;
-        msg = op_vmlmb_msg(ws);
-      } else if (gnorm <= gtest) {
-        stop = 1n;
-        msg = swrite(format="convergence (%s)\n", "gradient small enough");
-      } else if (check_iter && iter > maxiter) {
-        stop = 1n;
-        msg = swrite(format="warning: too many iterations (%d)\n", iter);
-      }
-      if (stop && savebest) {
-        /* restore best solution so far. */
-        eq_nocopy, x, best_x;
-        fx = best_fx;
-        gnorm = best_gnorm;
-      }
-      if (verb) {
-        if (eval == 1 && ! use_printer) {
-          write, output, format="# Method %d (MEM=%d): %s\n#\n",
-            method, mem, method_name;
-          write, output, format="# %s\n# %s\n",
-            "ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN",
-            "---------------------------------------------------------------";
-        }
-        if (stop || ! (iter % verb)) {
-          timer, elapsed;
-          cpu = 1e3*(elapsed(1) - cpu_start);
-          if (use_printer) {
-            printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
-          } else {
-            write, output, format=" %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
-              iter, eval, cpu, fx, gnorm, step;
-          }
-          if (use_viewer) {
-            viewer, x, extra;
-          }
-        }
-      }
-      if (stop) {
-        if (msg && (verb || (task != 3 && ! quiet))) {
-          write, output, format="# %s\n", strtrim(msg, 2, blank=" \t\v\n\r");
-        }
-        return x;
+    write, task, stop;
+    if (task == 2 && bounds != 0) {
+      /* Determine the set of free variables. */
+      isfree = [];
+      if (bounds == 1) {
+        isfree = ((x > xmin) | (gx < 0.0));
+      } else if (bounds == 2) {
+        isfree = ((x < xmax) | (gx > 0.0));
+      } else {
+        isfree = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
       }
     }
 
+    /* Check for convergence. */
+    if (task > 2) {
+      if (gnorm < 0) {
+        // FIXME:
+        gnorm = (bounds != 0 ? opl_norm2(isfree*gx) : opl_norm2(gx));
+      }
+      if (task > 3) {
+        /* Error or warning. */
+        stop = 1n;
+        msg = opl_vmlmb_msg(ws);
+      } else if (gnorm <= gtest) {
+        stop = 1n;
+        msg = swrite(format="convergence (%s)\n", "gradient small enough");
+      } else if (iter > maxiter) {
+        stop = 1n;
+        msg = swrite(format="warning: too many iterations (%d)\n", iter);
+      }
+    }
+    if (stop && savebest) {
+      /* restore best solution so far. */
+      eq_nocopy, x, best_x;
+      fx = best_fx;
+      gnorm = best_gnorm;
+    }
+    if (verb && (stop || task > 2 && (iter % verb) == 0)) {
+      if (eval == 1) {
+        write, output, format="# Method %d (MEM=%d): %s\n#\n",
+          method, mem, method_name;
+        write, output, format="# %s\n# %s\n",
+          "ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN",
+          "---------------------------------------------------------------";
+      }
+      timer, elapsed;
+      cpu = 1e3*(elapsed(1) - cpu_start);
+      if (use_printer) {
+        printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
+      } else {
+        write, output, format=" %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
+          iter, eval, cpu, fx, gnorm, step;
+      }
+      if (use_viewer) {
+        viewer, x, extra;
+      }
+    }
+    if (stop) {
+      if (msg && (verb || (task != 3 && ! quiet))) {
+        write, output, format="# %s\n", strtrim(msg, 2, blank=" \t\v\n\r");
+      }
+      return x;
+    }
+
     /* Call optimizer. */
-    task = op_vmlmb_next(x, fx, gx, ws, active);
+    task = opl_vmlmb_next(x, fx, gx, ws, isfree);
     iter = (*ws(2))(7);
     step = (*ws(3))(22);
   }
 }
 
-func op_norm2(x) { return sqrt(sum(x*x)); }
-/* DOCUMENT op_norm2(x);
+func opl_norm2(x) { return sqrt(sum(x*x)); }
+/* DOCUMENT opl_norm2(x);
 
      Yield the Euclidean norm of X.
 */

@@ -1,7 +1,7 @@
 #
 # Makefile --
 #
-# Makefile for OptimPack.
+# Makefile for OptimPackLegacy.
 #
 #------------------------------------------------------------------------------
 #
@@ -43,7 +43,7 @@ ARFLAGS = rv
 
 LIBNAME = liboptimpack.a
 VERSION = `sed < $(srcdir)/../VERSION -e 's/ //g'`
-OBJS = op_lnsrch.o op_utils.o op_vmlmb.o
+OBJS = opl_lnsrch.o opl_utils.o opl_vmlmb.o
 
 all: $(LIBNAME)
 
@@ -56,11 +56,11 @@ install: $(LIBNAME)
 	  test -d "$(PREFIX)/lib" || mkdir -p "$(PREFIX)/lib"; \
 	  $(INSTALL) $(LIBNAME) "$(PREFIX)/lib/."; \
 	  test -d "$(PREFIX)/include" || mkdir -p "$(PREFIX)/include"; \
-	  $(INSTALL) optimpack.h "$(PREFIX)/include/."; \
+	  $(INSTALL) optimpacklegacy.h "$(PREFIX)/include/."; \
 	  test -d "$(PREFIX)/doc/OptimPack-$${version}" || \
 	    mkdir -p "$(PREFIX)/doc/OptimPack-$${version}"; \
 	  $(INSTALL) $(srcdir)/../README $(srcdir)/../AUTHORS \
-	    $(srcdir)/../LICENSE $(srcdir)/optimpack.h \
+	    $(srcdir)/../LICENSE $(srcdir)/optimpacklegacy.h \
 	    "$(PREFIX)/doc/OptimPack-$${version}/."; \
 	fi
 
@@ -73,11 +73,11 @@ $(LIBNAME): $(OBJS)
 	$(RM) $(LIBNAME)
 	$(AR) $(ARFLAGS) $(LIBNAME) $(OBJS)
 
-op_lnsrch.o: op_lnsrch.c optimpack.h
+opl_lnsrch.o: opl_lnsrch.c optimpacklegacy.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-op_vmlmb.o: op_vmlmb.c optimpack.h
+opl_vmlmb.o: opl_vmlmb.c optimpacklegacy.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-op_cgmnb.o: op_cgmnb.c optimpack.h
+opl_cgmnb.o: opl_cgmnb.c optimpacklegacy.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-op_utils.o: op_utils.c optimpack.h
+opl_utils.o: opl_utils.c optimpacklegacy.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
