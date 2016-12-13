@@ -1,36 +1,29 @@
 /*
  * OptimPack1-test.i --
  *
- *	Various tests from MINPACK suite for the optimization routines in
- *	OptimPack extension for Yorick.
+ * Various tests from MINPACK suite for the optimization routines in
+ * OptimPack extension for Yorick.
  *
  *-----------------------------------------------------------------------------
  *
- *	Copyright (C) 2003-2007 Eric Thi�baut.
+ * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
  *
- *	This file is part of OptimPack.
+ * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
  *
- *	OptimPack is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	version 2 as published by the Free Software Foundation.
+ * OptimPack is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
- *	OptimPack is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
+ * OptimPack is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
  *
- *	You should have received a copy of the GNU General Public
- *	License along with OptimPack (file "COPYING" in the top source
- *	directory); if not, write to the Free Software Foundation,
- *	Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
- *
- *-----------------------------------------------------------------------------
- *
- * History:
- *	$Id: OptimPack1-test.i,v 1.1 2007/07/05 10:13:11 eric Exp eric $
- *	$Log: OptimPack1-test.i,v $
- *	Revision 1.1  2007/07/05 10:13:11  eric
- *	Initial revision
+ * You should have received a copy of the GNU General Public License along with
+ * OptimPack (file "LICENSE" in the top source directory); if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307 USA
  *
  *-----------------------------------------------------------------------------
  */
@@ -54,7 +47,7 @@ op_rosenbrock_nevals=0;
 func op_test_rosenbrock(nil, start=, method=, ndirs=, frtol=)
 /* DOCUMENT op_test_rosenbrock, ...;
      Test op_driver with Rosenbrock function.
-     
+
    SEE ALSO: op_test_rosenbrock_func. */
 {
   x = is_void(start) ? [0.0, 0.0] : start;
@@ -86,9 +79,9 @@ func op_test_quad(x, &g)
 }
 
 func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
-                   maxiter=, maxeval=, frtol=, fatol=,
-                   sftol=, sgtol=, sxtol=,
-                   output=)
+                maxiter=, maxeval=, frtol=, fatol=,
+                sftol=, sgtol=, sxtol=,
+                output=)
 /* DOCUMENT op_test_um(...)
      Check various optimization methods for eighteen nonlinear unconstrained
      minimization problems.
@@ -106,7 +99,7 @@ func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
       error, "bad value for keyword OUTPUT";
     }
   }
-  
+
   /* Check compatibility of arguments N and PROB. */
   if (prob == 1) {
     name = "Helical valley function.";
@@ -194,7 +187,7 @@ func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
   /* Starting vector. */
   x = minpack1_umipt(n, prob, factor);
   dims = dimsof(x);
-  
+
   /* Choose minimization method. */
   //if (is_void(frtol)) frtol = 1e-10;
   //if (is_void(fatol)) fatol = 1e-10;
@@ -275,7 +268,7 @@ func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
       }
     }
 
-    
+
     /* Call optimizer. */
     if (! method) {
       task = op_vmlmb_next(x, f, g, ws);
@@ -320,7 +313,7 @@ func minpack1_umobj(x, prob)
      Returns  the objective functions  of eighteen  nonlinear unconstrained
      minimization problems.  X  is the parameter array: a  vector of length
      N, PROB is the problem number (a positive integer between 1 and 18).
-     
+
      The  values  of  N  for  functions 1,2,3,4,5,10,11,12,16  and  17  are
      3,6,3,2,3,2,4,3,2 and 4, respectively.  For  function 7, n may be 2 or
      greater but is usually 6 or 9.  For functions 6,8,9,13,14,15 and 18, N
@@ -330,7 +323,7 @@ func minpack1_umobj(x, prob)
    SEE ALSO: minpack1_umgrd, minpack1_umipt. */
 {
   n = numberof(x);
-  
+
   /* Function routine selector. */
   if (prob == 1) {
     /* Helical valley function. */
@@ -1004,7 +997,7 @@ func minpack1_umipt(n, prob, factor)
     h = 1.0/double(n+1);
     for (j=1 ; j<=n ; ++j) x(j) = double(j)*h;
   }
-  
+
   /* Compute multiple of initial point. */
   if (factor != 1.0) {
     if (prob == 7) {
@@ -1015,12 +1008,3 @@ func minpack1_umipt(n, prob, factor)
   }
   return x;
 }
-
-/*---------------------------------------------------------------------------*
- * Local Variables:                                                          *
- * mode: Yorick                                                              *
- * tab-width: 8                                                              *
- * fill-column: 75                                                           *
- * coding: latin-1                                                           *
- * End:                                                                      *
- *---------------------------------------------------------------------------*/
