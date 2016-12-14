@@ -59,7 +59,7 @@ install: $(LIBNAME)
 	  $(INSTALL) optimpack.h "$(PREFIX)/include/."; \
 	  test -d "$(PREFIX)/doc/OptimPack-$${version}" || \
 	    mkdir -p "$(PREFIX)/doc/OptimPack-$${version}"; \
-	  $(INSTALL) $(srcdir)/../README $(srcdir)/../AUTHORS \
+	  $(INSTALL) $(srcdir)/../README.md $(srcdir)/../AUTHORS \
 	    $(srcdir)/../LICENSE $(srcdir)/optimpack.h \
 	    "$(PREFIX)/doc/OptimPack-$${version}/."; \
 	fi
