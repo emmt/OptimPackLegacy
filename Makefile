@@ -32,10 +32,12 @@ VERSION = `sed < VERSION -e 's/ //g'`
 SUBDIRS = yorick idl src
 
 DISTRIB_SRC = $(srcdir)
-DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md optimpack.bib
+DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md \
+    optimpack.bib
 
 CODE_SRC = $(srcdir)/src
-CODE_FILES = opl_limits.h opl_lnsrch.c opl_utils.c opl_vmlmb.c optimpacklegacy.h
+CODE_FILES = opl_algebra.c opl_limits.h opl_lnsrch.c opl_vmlmb.c opl_utils.c \
+    optimpacklegacy.h
 
 IDL_SRC = $(srcdir)/idl
 IDL_FILES = \

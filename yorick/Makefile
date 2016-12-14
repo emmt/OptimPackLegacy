@@ -48,7 +48,7 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=optimpacklegacy
 PKG_I=optimpacklegacy.i
 
-OBJS= opl_lnsrch.o opl_utils.o opl_vmlmb.o
+OBJS= opl_algebra.o opl_lnsrch.o opl_utils.o opl_vmlmb.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick

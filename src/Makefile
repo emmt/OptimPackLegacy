@@ -43,7 +43,7 @@ ARFLAGS = rv
 
 LIBNAME = liboptimpack.a
 VERSION = `sed < $(srcdir)/../VERSION -e 's/ //g'`
-OBJS = opl_lnsrch.o opl_utils.o opl_vmlmb.o
+OBJS = opl_algebra.o opl_lnsrch.o opl_utils.o opl_vmlmb.o
 
 all: $(LIBNAME)
 
@@ -73,11 +73,5 @@ $(LIBNAME): $(OBJS)
 	$(RM) $(LIBNAME)
 	$(AR) $(ARFLAGS) $(LIBNAME) $(OBJS)
 
-opl_lnsrch.o: opl_lnsrch.c optimpacklegacy.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-opl_vmlmb.o: opl_vmlmb.c optimpacklegacy.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-opl_cgmnb.o: opl_cgmnb.c optimpacklegacy.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
-opl_utils.o: opl_utils.c optimpacklegacy.h
+%.o: %.c optimpacklegacy.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@
