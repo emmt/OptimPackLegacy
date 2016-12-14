@@ -49,20 +49,19 @@ static double max(double a, double b) {
 }
 
 /*---------------------------------------------------------------------------*/
-/* LIMITED MEMORY VARIABLE METRIC METHOD (BFGS)
-   WITH/WITHOUT BOUND CONSTRAINTS */
+/* LIMITED MEMORY VARIABLE METRIC METHOD (BFGS) WITH/WITHOUT BOUND
+   CONSTRAINTS */
 
 /* Indices 0-1 in ISAVE are reserved for opl_cshrc. */
 #define INDEX_OF_TASK       2
-#define INDEX_OF_STAGE      3 /* FIXME: unused */
-#define INDEX_OF_M          4
-#define INDEX_OF_N          5
-#define INDEX_OF_ITER       6
-#define INDEX_OF_MARK       7
-#define INDEX_OF_MP         8
-#define INDEX_OF_FLAGS      9
-#define INDEX_OF_NEVALS    10
-#define INDEX_OF_NRESTARTS 11
+#define INDEX_OF_M          3
+#define INDEX_OF_N          4
+#define INDEX_OF_ITER       5
+#define INDEX_OF_MARK       6
+#define INDEX_OF_MP         7
+#define INDEX_OF_FLAGS      8
+#define INDEX_OF_NEVALS     9
+#define INDEX_OF_NRESTARTS 10
 #if (OPL_VMLMB_ISAVE_NUMBER != INDEX_OF_NRESTARTS + 1)
 # error bad ISAVE settings
 #endif
@@ -76,14 +75,15 @@ static double max(double a, double b) {
 #define INDEX_OF_FMIN     17
 #define INDEX_OF_F0       18
 #define INDEX_OF_GD       19
-#define INDEX_OF_GD0      20
+#define INDEX_OF_G0D      20
 #define INDEX_OF_STP      21
 #define INDEX_OF_STPMIN   22
 #define INDEX_OF_STPMAX   23
 #define INDEX_OF_DELTA    24
 #define INDEX_OF_EPSILON  25
-#define INDEX_OF_GPNORM   26
-#define INDEX_OF_WORK     27 /* must be the last one */
+#define INDEX_OF_GNORM    26
+#define INDEX_OF_G0NORM   27
+#define INDEX_OF_WORK     28 /* must be the last one */
 #if (OPL_VMLMB_DSAVE_NUMBER(0,0) != INDEX_OF_WORK)
 # error bad DSAVE settings
 #endif
@@ -120,6 +120,8 @@ opl_vmlmb_setup(opl_integer_t n, opl_integer_t m,
   if (delta < 0.0) return ERROR("DELTA < 0");
   if (epsilon < 0.0) return ERROR("EPSILON < 0");
 
+  csave[0]                  = '\0';
+
   isave[INDEX_OF_TASK]      =  OPL_TASK_FG;
   isave[INDEX_OF_M]         =  m;
   isave[INDEX_OF_N]         =  n;
@@ -138,13 +140,14 @@ opl_vmlmb_setup(opl_integer_t n, opl_integer_t m,
   dsave[INDEX_OF_FMIN]      =  0.0;
   dsave[INDEX_OF_F0]        =  0.0;
   dsave[INDEX_OF_GD]        =  0.0;
-  dsave[INDEX_OF_GD0]       =  0.0;
+  dsave[INDEX_OF_G0D]       =  0.0;
   dsave[INDEX_OF_STP]       =  0.0;
   dsave[INDEX_OF_STPMIN]    =  0.0;
   dsave[INDEX_OF_STPMAX]    =  0.0;
   dsave[INDEX_OF_DELTA]     =  delta;
   dsave[INDEX_OF_EPSILON]   =  epsilon;
-  dsave[INDEX_OF_GPNORM]    = -1.0;
+  dsave[INDEX_OF_GNORM]     = -1.0;
+  dsave[INDEX_OF_G0NORM]    = -1.0;
 
   return isave[INDEX_OF_TASK];
 #undef SET_TASK
@@ -153,13 +156,46 @@ opl_vmlmb_setup(opl_integer_t n, opl_integer_t m,
 int
 opl_vmlmb_restart(char csave[], opl_integer_t isave[], double dsave[])
 {
+  csave[0]                  = '\0';
+
   isave[INDEX_OF_TASK]      =  OPL_TASK_FG;
   isave[INDEX_OF_ITER]      =  0;
   isave[INDEX_OF_MARK]      = -1;
   isave[INDEX_OF_MP]        =  0;
   isave[INDEX_OF_NEVALS]    =  0;
   isave[INDEX_OF_NRESTARTS] =  0;
+
+  dsave[INDEX_OF_F0]        =  0.0;
+  dsave[INDEX_OF_GD]        =  0.0;
+  dsave[INDEX_OF_G0D]       =  0.0;
+  dsave[INDEX_OF_STP]       =  0.0;
+  dsave[INDEX_OF_STPMIN]    =  0.0;
+  dsave[INDEX_OF_STPMAX]    =  0.0;
+  dsave[INDEX_OF_GNORM]     = -1.0;
+  dsave[INDEX_OF_G0NORM]    = -1.0;
+
   return isave[INDEX_OF_TASK];
+}
+
+int
+opl_vmlmb_restore(double x[], double *f, double g[],
+                  char csave[], opl_integer_t isave[], double dsave[])
+{
+  int task = isave[INDEX_OF_TASK];
+  if (task == OPL_TASK_FG) {
+    opl_integer_t m = isave[INDEX_OF_M];
+    opl_integer_t n = isave[INDEX_OF_N];
+    opl_integer_t mark = isave[INDEX_OF_MARK];
+    const double *s = dsave + INDEX_OF_WORK + 2*m + n;
+    const double *y = s + n*m;
+    *f = dsave[INDEX_OF_F0];
+    dsave[INDEX_OF_GNORM] = dsave[INDEX_OF_G0NORM];
+    opl_dcopy(n, &s[mark*n], x);
+    opl_dcopy(n, &y[mark*n], g);
+    task = OPL_TASK_NEWX;
+    isave[INDEX_OF_TASK] = task;
+  }
+  return task;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -205,13 +241,14 @@ opl_vmlmb_next(double x[], double *f, double g[],
   double fatol    = dsave[INDEX_OF_FATOL];
   double f0       = dsave[INDEX_OF_F0];
   double gd       = dsave[INDEX_OF_GD];
-  double gd0      = dsave[INDEX_OF_GD0];
+  double g0d      = dsave[INDEX_OF_G0D];
   double stp      = dsave[INDEX_OF_STP];
   double stpmin   = dsave[INDEX_OF_STPMIN];
   double stpmax   = dsave[INDEX_OF_STPMAX];
   double delta    = dsave[INDEX_OF_DELTA];
   double epsilon  = dsave[INDEX_OF_EPSILON];
-  double gpnorm   = dsave[INDEX_OF_GPNORM];
+  double gnorm    = dsave[INDEX_OF_GNORM];
+  double g0norm   = dsave[INDEX_OF_G0NORM];
 
   double *alpha = dsave + INDEX_OF_WORK;
   double *rho = alpha + m;
@@ -223,6 +260,7 @@ opl_vmlmb_next(double x[], double *f, double g[],
   opl_integer_t i, j, k;
 
   switch (task) {
+
   case OPL_TASK_FG:
     /* Caller has perfomed a new evaluation of the function and its gradient. */
     ++nevals;
@@ -251,6 +289,7 @@ opl_vmlmb_next(double x[], double *f, double g[],
              search. */
           opl_dcopy(n, S(mark), x);
           opl_dcopy(n, Y(mark), g);
+          gnorm = g0norm;
           *f = f0;
         }
         break;
@@ -268,8 +307,8 @@ opl_vmlmb_next(double x[], double *f, double g[],
       break;
     }
     opl_dcopy_free(n, g, d, isfree);
-    gpnorm = opl_dnrm2(n, d);
-    if (gpnorm == zero) {
+    gnorm = opl_dnrm2(n, d);
+    if (gnorm == zero) {
       SET_TASK(OPL_TASK_CONV, "local minimum found");
       break;
     }
@@ -297,7 +336,7 @@ opl_vmlmb_next(double x[], double *f, double g[],
       } else if (opl_noneof(n, Y(mark))) {
         SET_TASK(OPL_TASK_WARN, "no gradient change");
       } else {
-        double change = max(fabs(*f - f0), fabs(stp*gd0));
+        double change = max(fabs(*f - f0), fabs(stp*g0d));
         if (change <= frtol*fabs(f0)) {
           SET_TASK(OPL_TASK_CONV, "FRTOL test satisfied");
         } else if (change <= fatol) {
@@ -402,7 +441,7 @@ opl_vmlmb_next(double x[], double *f, double g[],
         stp = 1.0;
         gd = -opl_ddot(n, g, d);
         if (epsilon > zero) {
-          descent = (gd <= -epsilon*gpnorm*opl_dnrm2(n, d));
+          descent = (gd <= -epsilon*gnorm*opl_dnrm2(n, d));
         } else {
           descent = (gd < zero);
         }
@@ -432,23 +471,25 @@ opl_vmlmb_next(double x[], double *f, double g[],
       } else {
         /* No preconditioning, use a small step along the steepest descent. */
         if (delta > zero) {
-          stp = (opl_dnrm2(n, x)/gpnorm)*delta;
+          stp = (opl_dnrm2(n, x)/gnorm)*delta;
         } else {
           stp = zero;
         }
         if (stp <= zero) {
           /* The following step length is quite arbitrary but to avoid this
              would require to know the typical size of the variables. */
-          stp = one/gpnorm;
+          stp = one/gnorm;
         }
-        gd = -gpnorm*gpnorm;
+        gd = -gnorm*gnorm;
       }
     }
 
-    /* Advance the mark and save point at start of line search. */
+    /* Advance the mark and save point at start of line search.  Note that this
+       point has forcibly been projected so it is feasible. */
     mark = (mark + 1)%m;
     f0 = *f;
-    gd0 = gd;
+    g0d = gd;
+    g0norm = gnorm;
     opl_dcopy(n, x, S(mark)); /* save parameters X0 */
     opl_dcopy(n, g, Y(mark)); /* save gradient G0 */
 
@@ -458,13 +499,13 @@ opl_vmlmb_next(double x[], double *f, double g[],
     stpmax = STPMAX;
 #else
     if (have_fmin) {
-      stpmax = (fmin - f0)/(sgtol*gd0);
+      stpmax = (fmin - f0)/(sgtol*g0d);
     } else {
       double temp = fabs(f0);
       if (temp < 1.0) {
 	temp = 1.0;
       }
-      stpmax = temp/(sgtol*gd0);
+      stpmax = temp/(sgtol*g0d);
     }
 #endif
     stp = min(stp, stpmax);
@@ -476,6 +517,15 @@ opl_vmlmb_next(double x[], double *f, double g[],
          nothing to do). */
       next_step(n, x, S(mark), stp, d, &task, csave);
     }
+    break;
+
+  case OPL_TASK_ERROR:
+    /* Nothing to do then. */
+    break;
+
+  default:
+    /* Probably an error. */
+    SET_TASK(OPL_TASK_ERROR, "corrupted workspace");
     break;
   }
 
@@ -500,7 +550,7 @@ opl_vmlmb_next(double x[], double *f, double g[],
 #endif
   dsave[INDEX_OF_F0]        = f0;
   dsave[INDEX_OF_GD]        = gd;
-  dsave[INDEX_OF_GD0]       = gd0;
+  dsave[INDEX_OF_G0D]       = g0d;
   dsave[INDEX_OF_STP]       = stp;
   dsave[INDEX_OF_STPMIN]    = stpmin;
   dsave[INDEX_OF_STPMAX]    = stpmax;
@@ -508,7 +558,8 @@ opl_vmlmb_next(double x[], double *f, double g[],
   dsave[INDEX_OF_DELTA]     = delta;   /* constant */
   dsave[INDEX_OF_EPSILON]   = epsilon; /* constant */
 #endif
-  dsave[INDEX_OF_GPNORM]    = gpnorm;
+  dsave[INDEX_OF_GNORM]    = gnorm;
+  dsave[INDEX_OF_G0NORM]   = g0norm;
   return task;
 }
 
@@ -607,7 +658,7 @@ EMIT_CODE(double, fatol,      FATOL,    dsave)
 EMIT_CODE(double, step,       STP,      dsave)
 EMIT_CODE(double, delta,      DELTA,    dsave)
 EMIT_CODE(double, epsilon,    EPSILON,  dsave)
-EMIT_CODE(double, gpnorm,     GPNORM,   dsave)
+EMIT_CODE(double, gnorm,     GNORM,   dsave)
 EMIT_CODE(opl_integer_t, iter,      ITER,      isave)
 EMIT_CODE(opl_integer_t, nevals,    NEVALS,    isave)
 EMIT_CODE(opl_integer_t, nrestarts, NRESTARTS, isave)

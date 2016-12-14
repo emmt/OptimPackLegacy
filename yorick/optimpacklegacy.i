@@ -38,7 +38,7 @@ extern __opl_csrch;
 */
 
 func opl_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
-              &csave, isave, dsave)
+               &csave, isave, dsave)
 {
   if (numberof(task) != 1) error, "TASK must be a scalar";
   if (structof(isave) != long || numberof(isave) < 2)
@@ -55,11 +55,11 @@ func opl_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
 }
 
 func opl_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
-                    delta=, epsilon=)
+                     delta=, epsilon=)
 {
   csave = array(char, 128);
-  isave = array(long,  12);
-  dsave = array(double, 27 + n + 2*m*(n + 1));
+  isave = array(long,  11);
+  dsave = array(double, 28 + n + 2*m*(n + 1));
   if (is_void(frtol)) frtol = 1e-10;
   if (is_void(fatol)) fatol = 1e-13;
   if (is_void(sftol)) sftol = 0.001; // FIXME:
@@ -77,71 +77,97 @@ func opl_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
   return ws;
 }
 
-func opl_vmlmb_msg(ws) { return string(ws(1)); }
-
-func opl_vmlmb_next(x, &f, &g, ws, isfree, h)
+func opl_vmlmb_restart(ws)
 {
-  local csave; eq_nocopy, csave, *ws(1);
-  if (structof(csave) != char || numberof(csave) != 128)
-    error, "corrupted workspace (CSAVE)";
+  /* Extract workspace data. */
+  local m, n, csave, isave, dsave;
+  __opl_vmlmb_parse, ws;
 
-  local isave; eq_nocopy, isave, *ws(2);
-  if (structof(isave) != long || numberof(isave) != 12)
-    error, "corrupted workspace (ISAVE)";
-  m = isave(5);
-  n = isave(6);
-
-  local dsave; eq_nocopy, dsave, *ws(3);
-  if (structof(dsave) != double || numberof(dsave) != 27 + n + 2*m*(1 + n))
-    error, "corrupted workspace (DSAVE)";
-
-  if (structof(x) != double || numberof(x) != n)
-    error, "bad parameter array X";
-  if (structof(f) != double || dimsof(f)(1))
-    error, "bad function value F";
-  if (structof(g) != double || numberof(g) != n)
-    error, "bad gradient array G";
-
-  if (! is_void(isfree) && (structof(isfree) != int ||
-                            numberof(isfree) != n )) error, "bad array ISFREE";
-
-  if (! is_void(h) && (structof(h) != double ||
-                       numberof(h) != n )) error, "bad array H";
-
-  return long(__opl_vmlmb_next(x, f, g, &isfree, &h, csave, isave, dsave));
+  /* Call wrapper. */
+  return long(__opl_vmlmb_restart(csave, isave, dsave));
 }
 
-extern __opl_vmlmb_next;
-/* PROTOTYPE
-   int opl_vmlmb_next(double array x, double array f, double array g,
-                      pointer isfree, pointer h,
-		      char array csave, long array isave, double array dsave);
-*/
+func opl_vmlmb_restore(x, &f, g, ws)
+{
+  /* Extract workspace data. */
+  local m, n, csave, isave, dsave;
+  __opl_vmlmb_parse, ws;
 
-extern __opl_vmlmb_setup;
-/* PROTOTYPE
-   int opl_vmlmb_setup(long n, long m,
-                       double fatol, double frtol,
-                       double sftol, double sgtol, double sxtol,
-                       double delta, double epsilon,
-                       char array csave, long array isave, double array dsave);
-*/
+  /* Check other arguments. */
+  if (structof(x) != double || numberof(x) != n) {
+    error, "bad parameter array X";
+  }
+  if (structof(g) != double || numberof(g) != n) {
+    error, "bad gradient array G";
+  }
 
-extern __opl_vmlmb_set_fmin;
-/* PROTOTYPE
-   int opl_vmlmb_set_fmin(char array csave,
-                          long array isave,
-                          double array dsave,
-                          double new_value,
-                          double array old_value);
-*/
-extern __opl_vmlmb_get_fmin;
-/* PROTOTYPE
-   int opl_vmlmb_get_fmin(char array csave,
-                         long array isave,
-                         double array dsave,
-                         double array value);
-*/
+  /* Call wrapper. */
+  fp = [0.0];
+  task = long(__opl_vmlmb_restore(x, fp, g, csave, isave, dsave));
+  f = fp(1);
+  return task;
+}
+
+func opl_vmlmb_next(x, &f, g, ws, isfree, h)
+{
+  /* Extract workspace data. */
+  local m, n, csave, isave, dsave;
+  __opl_vmlmb_parse, ws;
+
+  /* Check other arguments. */
+  if (structof(x) != double || numberof(x) != n) {
+    error, "bad parameter array X";
+  }
+  if (identof(f) > Y_DOUBLE || ! is_scalar(f)) {
+    error, "bad function value F";
+  }
+  if (structof(g) != double || numberof(g) != n) {
+    error, "bad gradient array G";
+  }
+  if (! is_void(isfree) && (structof(isfree) != int ||
+                            numberof(isfree) != n )) {
+    error, "bad array ISFREE";
+  }
+  if (! is_void(h) && (structof(h) != double ||
+                       numberof(h) != n )) {
+    error, "bad array H";
+  }
+
+  /* Call wrapper. */
+  fp = [double(f)]
+  task = long(__opl_vmlmb_next(x, fp, g, &isfree, &h, csave, isave, dsave));
+  f = fp(1);
+  return task;
+}
+
+func opl_vmlmb_get_msg(ws)         { return string(ws(1)); }
+
+func opl_vmlmb_get_task(ws)        { return (*ws(2))( 3); }
+func opl_vmlmb_get_m(ws)           { return (*ws(2))( 4); }
+func opl_vmlmb_get_n(ws)           { return (*ws(2))( 5); }
+func opl_vmlmb_get_iterations(ws)  { return (*ws(2))( 6); }
+func opl_vmlmb_get_mark(ws)        { return (*ws(2))( 7); }
+func opl_vmlmb_get_mp(ws)          { return (*ws(2))( 8); }
+func opl_vmlmb_get_flags(ws)       { return (*ws(2))( 9); }
+func opl_vmlmb_get_evaluations(ws) { return (*ws(2))(10); }
+func opl_vmlmb_get_restarts(ws)    { return (*ws(2))(11); }
+
+func opl_vmlmb_get_sftol(ws)       { return (*ws(3))(13); }
+func opl_vmlmb_get_sgtol(ws)       { return (*ws(3))(14); }
+func opl_vmlmb_get_sxtol(ws)       { return (*ws(3))(15); }
+func opl_vmlmb_get_frtol(ws)       { return (*ws(3))(16); }
+func opl_vmlmb_get_fatol(ws)       { return (*ws(3))(17); }
+func opl_vmlmb_get_fmin(ws)        { return (*ws(3))(18); }
+func opl_vmlmb_get_f0(ws)          { return (*ws(3))(19); }
+func opl_vmlmb_get_gd(ws)          { return (*ws(3))(20); }
+func opl_vmlmb_get_gd0(ws)         { return (*ws(3))(21); }
+func opl_vmlmb_get_step(ws)        { return (*ws(3))(22); }
+func opl_vmlmb_get_stepmin(ws)     { return (*ws(3))(23); }
+func opl_vmlmb_get_stepmax(ws)     { return (*ws(3))(24); }
+func opl_vmlmb_get_delta(ws)       { return (*ws(3))(25); }
+func opl_vmlmb_get_epsilon(ws)     { return (*ws(3))(26); }
+func opl_vmlmb_get_gnorm(ws)       { return (*ws(3))(27); }
+func opl_vmlmb_get_g0norm(ws)      { return (*ws(3))(28); }
 
 local opl_vmlmb_set_fmin;
 local opl_vmlmb_get_fmin;
@@ -173,7 +199,7 @@ func opl_vmlmb_get_fmin(ws)
 
 func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
               verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
-              frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=, savebest=)
+              frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)
 /* DOCUMENT opl_vmlmb(f, x);
          or opl_vmlmb(f, x, fout, gout);
 
@@ -197,32 +223,31 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
        GOUT - optional output variable to store the value of the gradient
            of F at the minimum.
 
-     If the multivariate function has more than one minimum, which minimum
-     is returned is undefined (although it depends on the starting
-     parameters X).
+     If the multivariate function has more than one minimum, which minimum is
+     returned is undefined (although it depends on the starting parameters X).
 
-     In case of early termination, the best solution found so far is
-     returned.
+     In case of early termination, the best solution found so far is returned.
 
 
    KEYWORDS
 
      EXTRA - Supplemental argument for F; if non-nil, F is called as
-         F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).
+         F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).  It is
+         however more flexible to use a closure for F if additional data is
+         needed.
 
-     XMIN, XMAX  - Lower/upper bounds for  X.  Must be  conformable with X.
-         For instance with XMIN=0, the non-negative solution will be
-         returned.
+     XMIN, XMAX - Lower/upper bounds for X.  Must be conformable with X.  For
+         instance with XMIN=0, the non-negative solution will be returned.
 
-     MEM - Number of previous directions used in variable metric limited
-         memory method (default min(7, numberof(X))).
+     MEM - Number of previous directions used in variable metric limited memory
+         method (default min(7, numberof(X))).
 
      MAXITER - Maximum number of iterations (default: no limits).
 
      MAXEVAL - Maximum number of function evaluations (default: no limits).
 
-     FATOL, FRTOL - Relative function change tolerance for convergence (default:
-         1.5e-8).
+     FATOL, FRTOL - Relative function change tolerance for convergence
+         (default: 1.5e-8).
 
      GATOL, GRTOL - Absolute and relative gradient tolerances for convergence
          which is assumed whenever the Euclidean norm of the (projected)
@@ -230,20 +255,14 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
          the Euclidean norm of the (projected) initila gradient.  By default,
          GTAOL=0 and GRTOL=1e-6.
 
-     SAVEBEST - The default is to save the best variables among all tried ones
-         in order to always return the best solution encountered by the
-         algorithm.  This has however a memory cost, you may set this option
-         explicitly false (zero) to save a bit of memory, but in case of early
-         stopping, the returned solution may not be the best one.
-
-     VERB - Verbose mode?  If non-nil and non-zero, print out information
-         every VERB iterations and for the final one.
+     VERB - Verbose mode?  If non-nil and non-zero, print out information every
+         VERB iterations and for the final one.
 
      QUIET - If true and not in verbose mode, do not print warning nor
          convergence error messages.
 
-     OUPTPUT - Output for verbose mode.  For instance, text file stream
-         opened for writing.
+     OUPTPUT - Output for verbose mode.  For instance, text file stream opened
+         for writing.
 
      VIEWER - User defined subroutine to call every VERB iterations (see
          keyword VERB above)to display the solution X.  The subroutine will be
@@ -252,33 +271,32 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
             viewer, x, extra;
 
          where X is the current solution and EXTRA is the value of keyword
-         EXTRA (which to see).  If the viewer uses Yorick graphics window(s)
-         it may call "pause, 1;" before returning to make sure that graphics
-         get correctly updated.
+         EXTRA (which to see).  If the viewer uses Yorick graphics window(s) it
+         may call "pause, 1;" before returning to make sure that graphics get
+         correctly updated.
 
      PRINTER - User defined subroutine to call every VERB iterations (see
-         keyword VERB above) to printout iteration information.  The
-         subroutine will be called as:
+         keyword VERB above) to printout iteration information.  The subroutine
+         will be called as:
 
             printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
 
          where OUTPUT is the value of keyword OUTPUT (which to see), ITER is
          the number of iterations, EVAL is the number of function evaluations,
-         CPU is the elapsed CPU time in seconds, FX is the function value at
-         X, GNORM is the Euclidean norm of the gradient at X, STEPLEN is the
+         CPU is the elapsed CPU time in seconds, FX is the function value at X,
+         GNORM is the Euclidean norm of the gradient at X, STEPLEN is the
          length of the step along the search direction, X is the current
          solution and EXTRA is the value of keyword EXTRA (which to see).
 
-     SFTOL, SGTOL, SXTOL - Line search tolerance and safeguard
-        parameters (see opl_csrch).
+     SFTOL, SGTOL, SXTOL - Line search tolerance and safeguard parameters (see
+        opl_csrch).
 
    SEE ALSO: opl_get_flags, opl_csrch,
              opl_vmlmb_setup, opl_vmlmb_next.
  */
 {
-  local result, gx;
-
-  LONG_MAX = ((sizeof(long)*8 - 1) << 1) - 1;
+  /* Largest value of a long integer. */
+  LONG_MAX = (1 << (sizeof(long)*8 - 1)) - 1;
 
   /* Get function. */
   if (is_void(f) || is_array(f)) {
@@ -364,9 +382,6 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   }
   gtest = double(gatol);
 
-  /* By default, save the best solution so far. */
-  if (is_void(savebest)) savebest = 1n;
-
   /* Choose minimization method. */
   if (is_void(mem)) mem = min(n, 7);
   method_name = swrite(format="VMLMB %s bounds and MEM=%d",
@@ -376,9 +391,8 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
 
   /* Start iterations. */
-  step = 0.0;
   task = 1;
-  eval = iter = 0;
+  eval = 0;
   stop = 0n;
   if (verb) {
     elapsed = array(double, 3);
@@ -388,55 +402,31 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   if (structof(x) != double) {
     x = double(x);
   }
-  local best_x, best_fx, best_gnorm; /* best solution so far */
-  local gx, gnorm; /* the gradient and its (projected) norm */
-  local isfree;
+  local gx, gnorm, isfree, iter, step;
   for (;;) {
     if (task == 1) {
       /* Evaluate function and gradient. */
       if (eval >= maxeval) {
+        /* Too many function evaluations.  We restore the variables at the
+           start of the line search which is a cheap way (no extra memory cost)
+           to recover variables which should be nearly the best ones. */
         stop = 1n;
         msg = swrite(format="warning: too many function evaluations (%d)\n",
                      eval);
+        opl_vmlmb_restore, x, fx, gx, ws;
       } else {
         if (bounds != 0) {
           if ((bounds & 1) == 1) {
-            x = max(x, xmin);
+            x = max(unref(x), xmin);
           }
           if ((bounds & 2) == 2) {
-            x = min(x, xmax);
+            x = min(unref(x), xmax);
           }
         }
         fx = (use_extra ? f(x, gx, extra) : f(x, gx));
         ++eval;
-        if (bounds != 0) {
-          // FIXME:
-          /* Determine the set of free variables. */
-          if (bounds == 1) {
-            isfree = ((x > xmin) | (gx < 0.0));
-          } else if (bounds == 2) {
-            isfree = ((x < xmax) | (gx > 0.0));
-          } else {
-            isfree = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
-          }
-        }
-        if (eval == 1 && grtol > 0) {
-          gnorm = (bounds != 0 ? opl_norm2(isfree*gx) : opl_norm2(gx));
-          gtest = max(gtest, grtol*gnorm);
-        } else {
-          gnorm = -1; // to indicate that it must be updated if needed
-        }
-        if (savebest && (eval == 1 || fx < best_fx)) {
-          best_x = x;
-          best_fx = fx;
-          if (gnorm < 0) {
-            gnorm = (bounds != 0 ? opl_norm2(isfree*gx) : opl_norm2(gx));
-          }
-          best_gnorm = gnorm;
-        }
       }
     }
-    write, task, stop;
     if (task == 2 && bounds != 0) {
       /* Determine the set of free variables. */
       isfree = [];
@@ -451,14 +441,12 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
 
     /* Check for convergence. */
     if (task > 2) {
-      if (gnorm < 0) {
-        // FIXME:
-        gnorm = (bounds != 0 ? opl_norm2(isfree*gx) : opl_norm2(gx));
-      }
+      iter = opl_vmlmb_get_iterations(ws);
+      gnorm = opl_vmlmb_get_gnorm(ws);
       if (task > 3) {
         /* Error or warning. */
         stop = 1n;
-        msg = opl_vmlmb_msg(ws);
+        msg = opl_vmlmb_get_msg(ws);
       } else if (gnorm <= gtest) {
         stop = 1n;
         msg = swrite(format="convergence (%s)\n", "gradient small enough");
@@ -467,24 +455,23 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         msg = swrite(format="warning: too many iterations (%d)\n", iter);
       }
     }
-    if (stop && savebest) {
-      /* restore best solution so far. */
-      eq_nocopy, x, best_x;
-      fx = best_fx;
-      gnorm = best_gnorm;
-    }
     if (verb && (stop || task > 2 && (iter % verb) == 0)) {
-      if (eval == 1) {
+      if (eval == 1 && ! use_printer) {
         write, output, format="# Method %d (MEM=%d): %s\n#\n",
-          method, mem, method_name;
+          0, mem, method_name;
         write, output, format="# %s\n# %s\n",
           "ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN",
           "---------------------------------------------------------------";
       }
       timer, elapsed;
       cpu = 1e3*(elapsed(1) - cpu_start);
+      step = opl_vmlmb_get_step(ws);
+      if (task <= 2) {
+        iter = opl_vmlmb_get_iterations(ws);
+        gnorm = opl_vmlmb_get_gnorm(ws);
+      }
       if (use_printer) {
-        printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
+        printer, output, iter, eval, cpu, fx, gnorm, step, x, extra;
       } else {
         write, output, format=" %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
           iter, eval, cpu, fx, gnorm, step;
@@ -502,13 +489,75 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
 
     /* Call optimizer. */
     task = opl_vmlmb_next(x, fx, gx, ws, isfree);
-    iter = (*ws(2))(7);
-    step = (*ws(3))(22);
   }
 }
 
-func opl_norm2(x) { return sqrt(sum(x*x)); }
-/* DOCUMENT opl_norm2(x);
+/*---------------------------------------------------------------------------*/
+/* PRIVATE ROUTINES */
 
-     Yield the Euclidean norm of X.
+func __opl_vmlmb_parse(ws)
+{
+  extern m, n, csave, isave, dsave;
+  if (structof(ws) != pointer || numberof(ws) != 3) {
+    error, "expecting VMLMB workspace";
+  }
+  eq_nocopy, csave, *ws(1);
+  if (structof(csave) != char || numberof(csave) != 128) {
+    error, "corrupted workspace (CSAVE)";
+  }
+  eq_nocopy, isave, *ws(2);
+  if (structof(isave) != long || numberof(isave) != 11) {
+    error, "corrupted workspace (ISAVE)";
+  }
+  m = isave(4);
+  n = isave(5);
+  eq_nocopy, dsave, *ws(3);
+  if (structof(dsave) != double || numberof(dsave) != 28 + n + 2*m*(1 + n)) {
+    error, "corrupted workspace (DSAVE)";
+  }
+
+}
+errs2caller, __opl_vmlmb_parse;
+
+extern __opl_vmlmb_setup;
+/* PROTOTYPE
+   int opl_vmlmb_setup(long n, long m,
+                       double fatol, double frtol,
+                       double sftol, double sgtol, double sxtol,
+                       double delta, double epsilon,
+                       char array csave, long array isave, double array dsave);
+*/
+
+extern __opl_vmlmb_next;
+/* PROTOTYPE
+   int opl_vmlmb_next(double array x, double array f, double array g,
+                      pointer isfree, pointer h,
+		      char array csave, long array isave, double array dsave);
+*/
+
+extern __opl_vmlmb_restart;
+/* PROTOTYPE
+   int opl_vmlmb_restart(char array csave, long array isave, double array dsave);
+*/
+
+extern __opl_vmlmb_restore;
+/* PROTOTYPE
+   int opl_vmlmb_restore(double array x, double array f, double array g,
+                         char array csave, long array isave, double array dsave);
+*/
+
+extern __opl_vmlmb_set_fmin;
+/* PROTOTYPE
+   int opl_vmlmb_set_fmin(char array csave,
+                          long array isave,
+                          double array dsave,
+                          double new_value,
+                          double array old_value);
+*/
+extern __opl_vmlmb_get_fmin;
+/* PROTOTYPE
+   int opl_vmlmb_get_fmin(char array csave,
+                         long array isave,
+                         double array dsave,
+                         double array value);
 */

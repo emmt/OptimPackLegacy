@@ -47,11 +47,27 @@
 #define OPL_ERROR 1
 #define OPL_OK    0
 
-#define OPL_TRUE  1
-#define OPL_FALSE 0
+/**
+ * Possible values for a boolean.
+ */
+typedef enum {
+  OPL_FALSE = 0,
+  OPL_TRUE = 1
+} opl_boolean_t;
+
 
 /*---------------------------------------------------------------------------*/
 /* USEFUL MACROS */
+
+#ifndef _OPL_FORCE_INLINE
+#  if defined(_MSC_VER) /* Microsoft Visual Studio */
+#    define _OPL_FORCE_INLINE __forceinline
+#  elif defined(__GNUC__) /* GNU Compiler */
+#    define _OPL_FORCE_INLINE inline __attribute__((always_inline))
+#  elif defined( __cplusplus) /* C++ Compiler */
+#    define _OPL_FORCE_INLINE inline
+#  endif
+#endif
 
 /* OPL_STRINGIFY takes an argument and wraps it in "" (double quotation
    marks), OPL_CONCAT concatenates two arguments. */
@@ -379,8 +395,8 @@ extern int opl_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
            with/without bound constraints */
 
 #define OPL_VMLMB_CSAVE_NUMBER       OPL_MSG_SIZE
-#define OPL_VMLMB_ISAVE_NUMBER       12
-#define OPL_VMLMB_DSAVE_NUMBER(n, m) (27 + (n) + 2*(m)*((n) + 1))
+#define OPL_VMLMB_ISAVE_NUMBER       11
+#define OPL_VMLMB_DSAVE_NUMBER(n, m) (28 + (n) + 2*(m)*((n) + 1))
 
 /*
  * VMLM-B computes a local minimizer of a  function of N variables by a limited
@@ -583,22 +599,37 @@ extern int opl_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
  *   Éric Thiébaut.
  */
 
-extern int opl_vmlmb_setup(opl_integer_t n, opl_integer_t m,
-                           double fatol, double frtol,
-                           double sftol, double sgtol, double sxtol,
-                           double delta, double epsilon,
-                           char csave[], opl_integer_t isave[], double dsave[]);
+extern int
+opl_vmlmb_setup(opl_integer_t n, opl_integer_t m,
+                double fatol, double frtol,
+                double sftol, double sgtol, double sxtol,
+                double delta, double epsilon,
+                char csave[], opl_integer_t isave[], double dsave[]);
 
-extern int opl_vmlmb_next(double x[], double *f, double g[],
-                          opl_logical_t isfree[], const double h[],
-                          char csave[], opl_integer_t isave[], double dsave[]);
+extern int
+opl_vmlmb_next(double x[], double *f, double g[],
+               opl_logical_t isfree[], const double h[],
+               char csave[], opl_integer_t isave[], double dsave[]);
 
-extern int opl_vmlmb_set_fmin(const char csave[], opl_integer_t isave[],
-                              double dsave[], double new_value,
-                              double *old_value);
+/* Set workspace data so that it can be used for a new optimization with
+   the same parameters. */
+extern int
+opl_vmlmb_restart(char csave[], opl_integer_t isave[], double dsave[]);
 
-extern int opl_vmlmb_get_fmin(const char csave[], const opl_integer_t isave[],
-                              const double dsave[], double *ptr);
+/* Restore last line search starting point.  Calling this is only effective if
+   task is OPL_TASK_FG. */
+extern int
+opl_vmlmb_restore(double x[], double *f, double g[],
+                  char csave[], opl_integer_t isave[], double dsave[]);
+
+extern int
+opl_vmlmb_set_fmin(const char csave[], opl_integer_t isave[],
+                   double dsave[], double new_value,
+                   double *old_value);
+
+extern int
+opl_vmlmb_get_fmin(const char csave[], const opl_integer_t isave[],
+                   const double dsave[], double *ptr);
 /*	The function opl_vmlmb_set_fmin set the value of parameter FMIN in
 	variable metric limited memory (VMLM-B) method to be NEW_VALUE.  If
 	FMIN was already set and OLD_VALUE is non-NULL, the old value of FMIN
