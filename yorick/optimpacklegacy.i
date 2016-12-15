@@ -137,30 +137,25 @@ extern opl_vmlmb_restart;
 */
 
 func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
-              verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
-              frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)
+               verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
+               frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)
 /* DOCUMENT opl_vmlmb(f, x);
          or opl_vmlmb(f, x, fout, gout);
 
-     Returns a minimum of a multivariate function by an iterative minimization
-     algorithm (limited memory variable metric) possibly with simple bound
-     constraints on the parameters.  Arguments are:
+     Returns a minimum of a multivariate function F by an iterative
+     minimization algorithm (limited memory variable metric) possibly with
+     simple bound constraints on the parameters.  F is the function
+     to minimize, its prototype is:
 
-       F - User defined function to optimize.
-           The prototype of F is:
-             func F(x, &gx) {
-               fx = ....; // compute function value at X
-               gx = ....; // store gradient of F in GX
-               return fx; // return F(X)
-             }
+         func f(x, &gx) {
+             fx = ....; // compute function value at X
+             gx = ....; // store gradient of F in GX
+             return fx; // return F(X)
+         }
 
-       X - Starting solution (a floating point array).
-
-       FOUT - Optional output variable to store the value of F at the
-           minimum.
-
-       GOUT - optional output variable to store the value of the gradient
-           of F at the minimum.
+     Argument X is the starting solution (a double precision floating point
+     array).  FOUT and GOUT are optional output variables to store the value of
+     F and its gradient at the minimum.
 
      If the multivariate function has more than one minimum, which minimum is
      returned is undefined (although it depends on the starting parameters X).
@@ -248,7 +243,6 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       s != int && s != short && s != char) {
     error, "expecting a numerical array for initial parameters X";
   }
-  n = numberof(x);
   dims = dimsof(x);
 
   /* Bounds on parameters. */
@@ -322,10 +316,10 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   gtest = double(gatol);
 
   /* Choose minimization method. */
-  if (is_void(mem)) mem = min(n, 7);
+  if (is_void(mem)) mem = min(numberof(x), 7);
   method_name = swrite(format="VMLMB %s bounds and MEM=%d",
                        (bounds != 0 ? "with" : "without"), mem);
-  ws = opl_vmlmb_create(n, mem, fmin=fmin,
+  ws = opl_vmlmb_create(dims, mem, fmin=fmin,
                         fatol=fatol, frtol=frtol,
                         sftol=sftol, sgtol=sgtol, sxtol=sxtol);
 
@@ -344,16 +338,15 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   local gx, gnorm, isfree, iter, step;
   task = ws.task;
   for (;;) {
-    if (task == 1) {
+    if (task == OPL_TASK_FG) {
       /* Evaluate function and gradient. */
       if (eval >= maxeval) {
         /* Too many function evaluations.  We restore the variables at the
            start of the line search which is a cheap way (no extra memory cost)
            to recover variables which should be nearly the best ones. */
         stop = 1n;
-        msg = swrite(format="warning: too many function evaluations (%d)\n",
-                     eval);
-        task = opl_vmlmb_restore(ws, x, fx, gx);
+        msg = swrite(format="too many function evaluations (%d)", eval);
+        opl_vmlmb_restore, ws, x, fx, gx;
       } else {
         if (bounds != 0) {
           if ((bounds & 1) == 1) {
@@ -367,7 +360,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         ++eval;
       }
     }
-    if (task == 2 && bounds != 0) {
+    if (task == OPL_TASK_FREEVARS && bounds != 0) {
       /* Determine the set of free variables. */
       isfree = [];
       if (bounds == 1) {
@@ -380,20 +373,21 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     }
 
     /* Check for convergence. */
-    if (task > 2) {
-      if (task > 3) {
+    if (task >= OPL_TASK_NEWX) {
+      iter = ws.iterations;
+      if (task >= OPL_TASK_WARN) {
         /* Error or warning. */
         stop = 1n;
-        msg = ws.message;
+        msg = ws.reason;
       } else if (ws.gnorm <= gtest) {
         stop = 1n;
-        msg = swrite(format="convergence (%s)\n", "gradient small enough");
+        msg = swrite(format="convergence (%s)", "gradient small enough");
       } else if (iter > maxiter) {
         stop = 1n;
-        msg = swrite(format="warning: too many iterations (%d)\n", iter);
+        msg = swrite(format="too many iterations (%d)", iter);
       }
     }
-    if (verb && (stop || task > 2 && (iter % verb) == 0)) {
+    if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0)) {
       if (eval == 1 && ! use_printer) {
         write, output, format="# Method %d (MEM=%d): %s\n#\n",
           0, mem, method_name;
@@ -404,7 +398,6 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       timer, elapsed;
       cpu = 1e3*(elapsed(1) - cpu_start);
       step = ws.step;
-      iter = ws.iterations;
       gnorm = ws.gnorm;
       if (use_printer) {
         printer, output, iter, eval, cpu, fx, gnorm, step, x, extra;

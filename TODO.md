@@ -1,5 +1,9 @@
 * Update documentation (use Doxygen?).
 
+* Implement gradient-based convergence test.
+
+* Use `fmin`.
+
 * `gamma` should be computed (and applied) when there is a preconditioner.
 
 * Backtrack (using Armijo's rule) when at least one bound constraint becomes

@@ -162,11 +162,9 @@ get_array(int iarg, int type, const long dims[],
       }
     }
     return ptr;
-  }
-  if (argtype != type) {
-    if (nil_ok && argtype == Y_VOID) {
-      return NULL;
-    }
+  } else if (nil_ok && argtype == Y_VOID) {
+    return NULL;
+  } else {
     error("bad data type for argument `%s`", name);
   }
   error("argument `%s` must be a %ld-D array of `%s`%s",
@@ -557,7 +555,7 @@ Y_opl_vmlmb_iterate(int argc)
   } else {
     isfree = NULL;
   }
-  if (argc >= 5) {
+  if (argc >= 6) {
     h = (double*)get_array(--iarg, Y_DOUBLE, obj->dims, "h", TRUE);
   } else {
     h = NULL;
