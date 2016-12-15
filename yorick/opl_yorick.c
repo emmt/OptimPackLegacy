@@ -571,10 +571,13 @@ Y_opl_vmlmb_iterate(int argc)
 void
 Y_opl_vmlmb_restart(int argc)
 {
+  vmlmb_object_t* obj;
+
   if (argc != 1) {
     y_error("expecting exactly one argument");
   }
-  opl_vmlmb_restart(get_vmlmb(0)->ws);
+  obj = get_vmlmb(0);
+  opl_vmlmb_restart(obj->ws);
   ypush_long(opl_vmlmb_get_task(obj->ws));
 }
 
