@@ -60,7 +60,7 @@ IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
 
 YORICK_SRC = $(srcdir)/yorick
 YORICK_FILES = Makefile opl_yorick.c optimpacklegacy.i \
-    optimpacklegacy-test.i optimpacklegacy-test.out
+    optimpacklegacy-tests.i optimpacklegacy-tests.out
 
 all:
 	@echo "No default target"
@@ -71,7 +71,7 @@ distrib:
 	  echo >&2 "bad VERSION"; \
 	  return 1; \
 	fi; \
-	pkgdir=OptimPack-$$version; \
+	pkgdir=OptimPackLegacy-$$version; \
 	archive=$$pkgdir.tar.bz2; \
 	if test -e "$$pkgdir"; then \
 	  echo >&2 "error: $$pkgdir already exists"; \
