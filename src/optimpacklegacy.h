@@ -962,18 +962,6 @@ extern void opl_interval_free(opl_integer_t n, opl_logical_t isfree[],
 /*---------------------------------------------------------------------------*/
 /* UTILITIES */
 
-#define OPL_MSG_LEN 127
-#define OPL_MSG_SIZE (OPL_MSG_LEN + 1)
-extern int opl_error(char *buf, const char *errmsg);
-/* Copy ERRMSG in BUF and return OPL_ERROR.  BUF must have at least
-   OPL_MSG_SIZE bytes.  At most OPL_MSG_SIZE - 1 bytes get copied and BUF is
-   guaranted to be 0-terminated.  */
-
-extern void opl_mcopy(const char *msg, char *buf);
-/* Copy string MSG into BUF (if non-NULL).  BUF must have at least
-   OPL_MSG_SIZE bytes.  At most OPL_MSG_SIZE - 1 bytes get copied and BUF is
-   guaranted to be 0-terminated.  */
-
 extern double opl_dnrm2(opl_integer_t n, const double x[]);
 /* Returns the Euclidian norm of X: sqrt(X'.X), taking care of overflows. */
 

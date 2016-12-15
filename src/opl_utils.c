@@ -34,30 +34,6 @@
 #include "opl_private.h"
 
 /*---------------------------------------------------------------------------*/
-
-int opl_error(char *buf, const char *errmsg)
-{
-  if (buf) {
-    if (! errmsg) errmsg = "unknown error";
-    strncpy(buf, errmsg, OPL_MSG_LEN);
-    buf[OPL_MSG_LEN] = 0;
-  }
-  return -1; /* FIXME: OPL_ERROR; */
-}
-
-void opl_mcopy(const char *msg, char *buf)
-{
-  if (buf) {
-    if (msg) {
-      strncpy(buf, msg, OPL_MSG_LEN);
-      buf[OPL_MSG_LEN] = 0;
-    } else {
-      buf[0] = 0;
-    }
-  }
-}
-
-/*---------------------------------------------------------------------------*/
 /* CONTEXT MANAGEMENT AND ERROR REPORTING */
 
 const char* _opl_success_message = "Successful operation";
@@ -92,9 +68,7 @@ opl_initialize_context(opl_context_t* ctx)
   {                                                                     \
     return _OPL_SET_CONTEXT(ctx, OPL_##NAME, _opl_##name##_message);    \
   }
-#ifndef _OPL_FORCE_INLINE
 DEFINE_FUNCTION(success,             SUCCESS)
-#endif
 DEFINE_FUNCTION(insufficient_memory, INSUFFICIENT_MEMORY)
 DEFINE_FUNCTION(illegal_address,     ILLEGAL_ADDRESS)
 DEFINE_FUNCTION(invalid_argument,    INVALID_ARGUMENT)
