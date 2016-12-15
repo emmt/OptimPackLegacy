@@ -29,7 +29,7 @@
 
 #include <math.h>
 #include <string.h>
-#include "optimpacklegacy.h"
+#include "opl_private.h"
 
 /*---------------------------------------------------------------------------*/
 /* APPLY BOUND CONSTRAINTS */

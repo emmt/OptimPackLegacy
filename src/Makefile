@@ -73,5 +73,5 @@ $(LIBNAME): $(OBJS)
 	$(RM) $(LIBNAME)
 	$(AR) $(ARFLAGS) $(LIBNAME) $(OBJS)
 
-%.o: %.c optimpacklegacy.h
+%.o: %.c opl_private.h optimpacklegacy.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(@:.o=.c) -o $@

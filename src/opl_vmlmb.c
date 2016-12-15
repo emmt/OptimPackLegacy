@@ -1,5 +1,5 @@
 /*
- * opl_vmlmb --
+ * opl_vmlmb.c --
  *
  * Variable Metric Limited Memory with Bound constraints for OptimPackLegacy
  * library.
@@ -29,16 +29,67 @@
  */
 
 #include <math.h>
+#include <float.h>
+#include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
-#include "optimpacklegacy.h"
+#include "opl_private.h"
 
-#define opl_dcopy(n, x, y) memcpy((y), (x), (n)*sizeof(double))
+typedef unsigned char byte_t;
 
-#define STPMAX 1e20
+/* Some constants (see
+ * http://stackoverflow.com/questions/1923837/how-to-use-nan-and-inf-in-c for a
+ * discussion about how to define NaN and infinite).  Alternatives for Inf and NaN:
+ *
+ *   double NaN = strtod("NaN", NULL);
+ *   double Inf = strtod("Inf", NULL);
+ *
+ * but cannot be constants then.  Some macros may be defined in <math.h> (as
+ * part of C99 standard):
+ *
+ *   #include <math.h>
+ *   #ifdef NAN
+ *   const double NaN = NAN;
+ *   #end
+ *   #ifdef INFINITY
+ *   const double Inf = INFINITY;
+ *   #end
+ */
+static const double zero = 0.0;
+static const double one = 1.0;
+static const double NaN = 0.0/0.0;
+static const double Inf = 1.0/0.0;
 
-const double zero = 0.0;
-const double one = 1.0;
+/* Default settings. */
+#define DEFAULT_STPMAX   1e20
+#define DEFAULT_SFTOL    0.001
+#define DEFAULT_SGTOL    0.9
+#define DEFAULT_SXTOL    0.1
+#define DEFAULT_FATOL    0.0
+#define DEFAULT_FRTOL    1e-10
+#define DEFAULT_DELTA    1e-3
+#define DEFAULT_EPSILON  0.0
+
+#define FLAG_FMIN        (1 << 0)
+
+/* `task`, `context` and some other members are shared with the embedded
+   line search structure. */
+#define TASK(ws)    (ws)->lnsrch.task
+#define CONTEXT(ws) (ws)->lnsrch.context
+#define STATUS(ws)  (ws)->lnsrch.context.status
+#define SXTOL(ws)   (ws)->lnsrch.xtol
+#define SFTOL(ws)   (ws)->lnsrch.ftol
+#define SGTOL(ws)   (ws)->lnsrch.gtol
+#define SXTOL(ws)   (ws)->lnsrch.xtol
+#define STPMIN(ws)  (ws)->lnsrch.stpmin
+#define STPMAX(ws)  (ws)->lnsrch.stpmax
+
+/* Allocate an array of given type and size. */
+#define NEW(type, number) ((type*)malloc((number)*sizeof(type)))
+
+/*---------------------------------------------------------------------------*/
+/* PRIVATE FUNCTIONS */
 
 static double min(double a, double b) {
   return (a <= b ? a : b);
@@ -48,413 +99,297 @@ static double max(double a, double b) {
   return (a >= b ? a : b);
 }
 
-/*---------------------------------------------------------------------------*/
-/* LIMITED MEMORY VARIABLE METRIC METHOD (BFGS) WITH/WITHOUT BOUND
-   CONSTRAINTS */
+/* Apply L-BFGS recursion to compute search direction. */
+static void
+compute_direction(opl_vmlmb_workspace_t* ws, double d[],
+                  const opl_logical_t isfree[], const double h[]);
 
-/* Indices 0-1 in ISAVE are reserved for opl_cshrc. */
-#define INDEX_OF_TASK       2
-#define INDEX_OF_M          3
-#define INDEX_OF_N          4
-#define INDEX_OF_ITER       5
-#define INDEX_OF_MARK       6
-#define INDEX_OF_MP         7
-#define INDEX_OF_FLAGS      8
-#define INDEX_OF_NEVALS     9
-#define INDEX_OF_NRESTARTS 10
-#if (OPL_VMLMB_ISAVE_NUMBER != INDEX_OF_NRESTARTS + 1)
-# error bad ISAVE settings
-#endif
-
-/* Indices 0-11 in ISAVE are reserved for opl_cshrc. */
-#define INDEX_OF_SFTOL    12
-#define INDEX_OF_SGTOL    13
-#define INDEX_OF_SXTOL    14
-#define INDEX_OF_FRTOL    15
-#define INDEX_OF_FATOL    16
-#define INDEX_OF_FMIN     17
-#define INDEX_OF_F0       18
-#define INDEX_OF_GD       19
-#define INDEX_OF_G0D      20
-#define INDEX_OF_STP      21
-#define INDEX_OF_STPMIN   22
-#define INDEX_OF_STPMAX   23
-#define INDEX_OF_DELTA    24
-#define INDEX_OF_EPSILON  25
-#define INDEX_OF_GNORM    26
-#define INDEX_OF_G0NORM   27
-#define INDEX_OF_WORK     28 /* must be the last one */
-#if (OPL_VMLMB_DSAVE_NUMBER(0,0) != INDEX_OF_WORK)
-# error bad DSAVE settings
-#endif
-
-#define FLAG(n)                          (1 << (n))
-#define FLAG_IS_SET(value, flag)         (((value) & (flag)) != 0)
-#define FLAG_FMIN                        FLAG(0)
-
-#define ERROR(str)   SET_TASK(OPL_TASK_ERROR, str)
-
-#define VMLMB_SETUP "opl_vmlmb_setup: "
-#define VMLMB_NEXT  "opl_vmlmb_next: "
-
-int
-opl_vmlmb_setup(opl_integer_t n, opl_integer_t m,
-                double fatol, double frtol,
-                double sftol, double sgtol, double sxtol,
-                double delta, double epsilon,
-                char csave[], opl_integer_t isave[], double dsave[])
-{
-#define SET_TASK(val, str) (opl_mcopy(VMLMB_SETUP str, csave), task = (val))
-  int task = OPL_TASK_FG;
-  if (n <= 0) return ERROR("N <= 0");
-  if (m <= 0) return ERROR("M <= 0");
-  if (fatol < 0.0) return ERROR("FATOL < 0");
-  if (frtol < 0.0) return ERROR("FRTOL < 0");
-  if (sxtol <= 0.0) return ERROR("SXTOL <= 0");
-  if (sxtol >= 1.0) return ERROR("SXTOL >= 1");
-  if (sftol <= 0.0) return ERROR("SFTOL <= 0");
-  if (sftol >= 1.0) return ERROR("SFTOL >= 1");
-  if (sgtol <= 0.0) return ERROR("SGTOL <= 0");
-  if (sgtol >= 1.0) return ERROR("SGTOL >= 1");
-  if (sftol >= sgtol) return ERROR("SFTOL >= SGTOL");
-  if (delta < 0.0) return ERROR("DELTA < 0");
-  if (epsilon < 0.0) return ERROR("EPSILON < 0");
-
-  csave[0]                  = '\0';
-
-  isave[INDEX_OF_TASK]      =  OPL_TASK_FG;
-  isave[INDEX_OF_M]         =  m;
-  isave[INDEX_OF_N]         =  n;
-  isave[INDEX_OF_ITER]      =  0;
-  isave[INDEX_OF_MARK]      = -1;
-  isave[INDEX_OF_MP]        =  0;
-  isave[INDEX_OF_FLAGS]     =  0;
-  isave[INDEX_OF_NEVALS]    =  0;
-  isave[INDEX_OF_NRESTARTS] =  0;
-
-  dsave[INDEX_OF_SFTOL]     =  sftol;
-  dsave[INDEX_OF_SGTOL]     =  sgtol;
-  dsave[INDEX_OF_SXTOL]     =  sxtol;
-  dsave[INDEX_OF_FRTOL]     =  frtol;
-  dsave[INDEX_OF_FATOL]     =  fatol;
-  dsave[INDEX_OF_FMIN]      =  0.0;
-  dsave[INDEX_OF_F0]        =  0.0;
-  dsave[INDEX_OF_GD]        =  0.0;
-  dsave[INDEX_OF_G0D]       =  0.0;
-  dsave[INDEX_OF_STP]       =  0.0;
-  dsave[INDEX_OF_STPMIN]    =  0.0;
-  dsave[INDEX_OF_STPMAX]    =  0.0;
-  dsave[INDEX_OF_DELTA]     =  delta;
-  dsave[INDEX_OF_EPSILON]   =  epsilon;
-  dsave[INDEX_OF_GNORM]     = -1.0;
-  dsave[INDEX_OF_G0NORM]    = -1.0;
-
-  return isave[INDEX_OF_TASK];
-#undef SET_TASK
-}
-
-int
-opl_vmlmb_restart(char csave[], opl_integer_t isave[], double dsave[])
-{
-  csave[0]                  = '\0';
-
-  isave[INDEX_OF_TASK]      =  OPL_TASK_FG;
-  isave[INDEX_OF_ITER]      =  0;
-  isave[INDEX_OF_MARK]      = -1;
-  isave[INDEX_OF_MP]        =  0;
-  isave[INDEX_OF_NEVALS]    =  0;
-  isave[INDEX_OF_NRESTARTS] =  0;
-
-  dsave[INDEX_OF_F0]        =  0.0;
-  dsave[INDEX_OF_GD]        =  0.0;
-  dsave[INDEX_OF_G0D]       =  0.0;
-  dsave[INDEX_OF_STP]       =  0.0;
-  dsave[INDEX_OF_STPMIN]    =  0.0;
-  dsave[INDEX_OF_STPMAX]    =  0.0;
-  dsave[INDEX_OF_GNORM]     = -1.0;
-  dsave[INDEX_OF_G0NORM]    = -1.0;
-
-  return isave[INDEX_OF_TASK];
-}
-
-int
-opl_vmlmb_restore(double x[], double *f, double g[],
-                  char csave[], opl_integer_t isave[], double dsave[])
-{
-  int task = isave[INDEX_OF_TASK];
-  if (task == OPL_TASK_FG) {
-    opl_integer_t m = isave[INDEX_OF_M];
-    opl_integer_t n = isave[INDEX_OF_N];
-    opl_integer_t mark = isave[INDEX_OF_MARK];
-    const double *s = dsave + INDEX_OF_WORK + 2*m + n;
-    const double *y = s + n*m;
-    *f = dsave[INDEX_OF_F0];
-    dsave[INDEX_OF_GNORM] = dsave[INDEX_OF_G0NORM];
-    opl_dcopy(n, &s[mark*n], x);
-    opl_dcopy(n, &y[mark*n], g);
-    task = OPL_TASK_NEWX;
-    isave[INDEX_OF_TASK] = task;
-  }
-  return task;
-}
-
-/*---------------------------------------------------------------------------*/
+/* Compute next step and set task. */
+static opl_task_t
+next_step(opl_vmlmb_workspace_t* ws, double x[]);
 
 /* Check H and ISFREE arrays, possibly fix ISFREE, returns non-zero
    in case of error. */
 static int
-check_free(opl_integer_t n, opl_logical_t isfree[], const double h[],
-           int *task, char csave[]);
+check_free(opl_vmlmb_workspace_t* ws, opl_logical_t isfree[], const double h[]);
 
-/* Compute next step and set task. */
-static void
-next_step(opl_integer_t n, double x[], const double x0[], double stp,
-          const double d[], int *task, char csave[]);
-
-/* A bunch of macros to simplify the code. */
-#define SET_TASK(val, str) (opl_mcopy(VMLMB_NEXT str, csave), task=(val))
-#define S(K)               &s[(K)*n]
-#define Y(K)               &y[(K)*n]
-
-int
-opl_vmlmb_next(double x[], double *f, double g[],
-               opl_logical_t isfree[], const double h[],
-               char csave[], opl_integer_t isave[], double dsave[])
+/* Report a failure. */
+static opl_task_t
+failure(opl_vmlmb_workspace_t* ws, opl_status_t status, const char* mesg)
 {
-  /* Get local variables. */
-  int           task      = isave[INDEX_OF_TASK];
-  opl_integer_t m         = isave[INDEX_OF_M];
-  opl_integer_t n         = isave[INDEX_OF_N];
-  opl_integer_t iter      = isave[INDEX_OF_ITER];
-  opl_integer_t mark      = isave[INDEX_OF_MARK];
-  opl_integer_t mp        = isave[INDEX_OF_MP];
-  opl_integer_t flags     = isave[INDEX_OF_FLAGS];
-  opl_integer_t nevals    = isave[INDEX_OF_NEVALS];
-  opl_integer_t nrestarts = isave[INDEX_OF_NRESTARTS];
-  int           have_fmin = ((flags & FLAG_FMIN) != 0);
+  opl_set_context(&CONTEXT(ws), status, mesg, OPL_PERMANENT);
+  return (TASK(ws) = OPL_TASK_ERROR);
+}
 
-  double sftol    = dsave[INDEX_OF_SFTOL];
-  double sgtol    = dsave[INDEX_OF_SGTOL];
-  double sxtol    = dsave[INDEX_OF_SXTOL];
-  double fmin     = dsave[INDEX_OF_FMIN];
-  double frtol    = dsave[INDEX_OF_FRTOL];
-  double fatol    = dsave[INDEX_OF_FATOL];
-  double f0       = dsave[INDEX_OF_F0];
-  double gd       = dsave[INDEX_OF_GD];
-  double g0d      = dsave[INDEX_OF_G0D];
-  double stp      = dsave[INDEX_OF_STP];
-  double stpmin   = dsave[INDEX_OF_STPMIN];
-  double stpmax   = dsave[INDEX_OF_STPMAX];
-  double delta    = dsave[INDEX_OF_DELTA];
-  double epsilon  = dsave[INDEX_OF_EPSILON];
-  double gnorm    = dsave[INDEX_OF_GNORM];
-  double g0norm   = dsave[INDEX_OF_G0NORM];
+/* Report a success. */
+static opl_task_t
+success(opl_vmlmb_workspace_t* ws, opl_task_t task, const char* mesg)
+{
+  opl_set_context(&CONTEXT(ws), OPL_SUCCESS, mesg, OPL_PERMANENT);
+  return (TASK(ws) = task);
+}
 
-  double *alpha = dsave + INDEX_OF_WORK;
-  double *rho = alpha + m;
-  double *d   = rho + m; /* anti-search direction */
-  double *s   = d + n;
-  double *y   = s + n*m;
+/*---------------------------------------------------------------------------*/
+
+#define GET_MEMBER(type, name, rvalue, invalid)         \
+  type                                                  \
+  opl_vmlmb_get_##name(opl_vmlmb_workspace_t* ws)       \
+  {                                                     \
+    if (ws == NULL) {                                   \
+      errno = EFAULT;                                   \
+      return invalid;                                   \
+    }                                                   \
+    return rvalue;                                      \
+  }
+
+GET_MEMBER(double, fmin, ws->fmin, NaN);
+GET_MEMBER(double, fatol, ws->fatol, NaN);
+GET_MEMBER(double, frtol, ws->frtol, NaN);
+GET_MEMBER(double, delta, ws->delta, NaN);
+GET_MEMBER(double, epsilon, ws->epsilon, NaN);
+GET_MEMBER(double, sxtol, SXTOL(ws), NaN);
+GET_MEMBER(double, sftol, SFTOL(ws), NaN);
+GET_MEMBER(double, sgtol, SGTOL(ws), NaN);
+GET_MEMBER(double, step, ws->stp, NaN);
+GET_MEMBER(double, gnorm, ws->gnorm, NaN);
+GET_MEMBER(opl_task_t, task, TASK(ws), OPL_TASK_ERROR);
+GET_MEMBER(opl_status_t, status, STATUS(ws), OPL_ILLEGAL_ADDRESS);
+GET_MEMBER(opl_integer_t, iterations, ws->iterations, -1);
+GET_MEMBER(opl_integer_t, evaluations, ws->evaluations, -1);
+GET_MEMBER(opl_integer_t, restarts, ws->restarts, -1);
+GET_MEMBER(const char*, reason, opl_get_message(&CONTEXT(ws)), NULL);
+
+#undef GET_MEMBER
+
+opl_status_t
+opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value)
+{
+  if (ws == NULL) {
+    errno = EFAULT;
+    return OPL_ILLEGAL_ADDRESS;
+  }
+  if (isnan(value) || value < -DBL_MAX) {
+    ws->flags &= (~FLAG_FMIN);
+    ws->fmin = NaN;
+  } else {
+    ws->fmin = value;
+  }
+  return OPL_SUCCESS;
+}
+
+#define SET_MEMBER(name, lvalue, invalid)                       \
+  opl_status_t                                                  \
+  opl_vmlmb_set_##name(opl_vmlmb_workspace_t* ws, double value) \
+  {                                                             \
+    if (ws == NULL) {                                           \
+      errno = EFAULT;                                           \
+      return OPL_ILLEGAL_ADDRESS;                               \
+    }                                                           \
+    if (invalid) {                                              \
+      errno = EINVAL;                                           \
+      return OPL_INVALID_ARGUMENT;                              \
+    }                                                           \
+    lvalue = value;                                             \
+    return OPL_SUCCESS;                                         \
+  }
+
+SET_MEMBER(fatol, ws->fatol, value < 0.0);
+SET_MEMBER(frtol, ws->frtol, value < 0.0);
+SET_MEMBER(delta, ws->delta, value < 0.0);
+SET_MEMBER(epsilon, ws->epsilon, value < 0.0);
+SET_MEMBER(sxtol, SXTOL(ws), value <= 0.0 || value >= 1.0);
+SET_MEMBER(sftol, SFTOL(ws), value <= 0.0 || value >= 1.0);
+SET_MEMBER(sgtol, SGTOL(ws), value <= 0.0 || value >= 1.0);
+
+#undef SET_MEMBER
+
+opl_task_t
+opl_vmlmb_restart(opl_vmlmb_workspace_t* ws)
+{
+  if (ws == NULL) {
+    errno = EFAULT;
+    return OPL_TASK_ERROR;
+  }
+  ws->evaluations = 0;
+  ws->iterations = 0;
+  ws->restarts = 0;
+  ws->mark = -1;
+  ws->mp = 0;
+  ws->f0 = 0.0;
+  ws->gd = 0.0;
+  ws->g0d = 0.0;
+  ws->stp = 0.0;
+  STPMIN(ws) = 0.0;
+  STPMAX(ws) = 0.0;
+  ws->gnorm = -1.0;
+  ws->g0norm = -1.0;
+  return success(ws, OPL_TASK_FG, "compute f(x) and g(x)");
+}
+
+opl_task_t
+opl_vmlmb_restore(opl_vmlmb_workspace_t* ws,
+                  double x[], double *f, double g[])
+{
+  if (ws == NULL || x == NULL || f == NULL || g == NULL) {
+    errno = EFAULT;
+    return OPL_TASK_ERROR;
+  }
+  if (TASK(ws) == OPL_TASK_FG && ws->evaluations > 0) {
+    *f = ws->f0;
+    ws->gnorm = ws->g0norm;
+    opl_dcopy(ws->n, ws->S[ws->mark], x);
+    opl_dcopy(ws->n, ws->Y[ws->mark], g);
+    success(ws, OPL_TASK_NEWX, "restored solution available for inspection");
+  }
+  return TASK(ws);
+}
+
+/*---------------------------------------------------------------------------*/
+/* PERFORM NEXT VMLMB STEP */
+
+opl_task_t
+opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
+               double x[], double *f, double g[],
+               opl_logical_t isfree[], const double h[])
+{
+  /* Local variables. */
+  double stpmax;
+  opl_integer_t m = ws->m;
+  opl_integer_t n = ws->n;
+  double* d = ws->d;
+  double** S_ = ws->S;
+  double** Y_ = ws->Y;
   double *Sm, *Ym;
-  int info, descent;
-  opl_integer_t i, j, k;
+  opl_integer_t i;
+  int have_fmin = ((ws->flags & FLAG_FMIN) != 0);
 
-  switch (task) {
+# define S(j) S_[j]
+# define Y(j) Y_[j]
+
+  switch (TASK(ws)) {
 
   case OPL_TASK_FG:
     /* Caller has perfomed a new evaluation of the function and its gradient. */
-    ++nevals;
-    if (have_fmin && *f <= fmin) {
-      ERROR("initial F <= FMIN");
-      break;
+    ++ws->evaluations;
+    if (have_fmin && *f <= ws->fmin) {
+      return failure(ws, OPL_F_LE_FMIN, "initial F <= FMIN");
     }
-    if (nevals > 1) {
+    if (ws->evaluations > 1) {
+      opl_status_t status;
+      opl_task_t task;
+
       /* Compute directional derivative for the line search. */
-      gd = -opl_ddot(n, g, d);
+      ws->gd = -opl_ddot(n, g, d);
 
       /* Call line search iterator to check for line search convergence. */
-      info = opl_csrch(*f, gd, &stp, sftol, sgtol, sxtol, stpmin, stpmax,
-                       &task, csave, isave, dsave);
-      if (info == 2 || info == 5) {
+      opl_csrch_iterate(&ws->lnsrch, *f, ws->gd, &ws->stp);
+      task = TASK(ws);
+      if (task == OPL_TASK_FG) {
+        /* Line search has not converged.  Compute a new iterate. */
+        return next_step(ws, x);
+      }
+      status = STATUS(ws);
+      if (task == OPL_TASK_CONV ||
+          (task == OPL_TASK_WARN && (status == OPL_XTOL_TEST_SATISFIED ||
+                                     status == OPL_ROUNDING_ERROR))) {
         /* Line search has converged. */
-        ++iter;
+        ++ws->iterations;
       } else {
-        /* Line search has not converged. */
-        if (info == 1) {
-          /* Compute the new iterate. */
-          next_step(n, x, S(mark), stp, d, &task, csave);
-        } else if (info != 2 && info != 5) {
-          /* Error or warning in line search (TASK and CSAVE should be set so
-             as to describe the problem).  Restore solution at start of line
-             search. */
-          opl_dcopy(n, S(mark), x);
-          opl_dcopy(n, Y(mark), g);
-          gnorm = g0norm;
-          *f = f0;
-        }
+        /* Error or warning in line search (task and context should have been
+           set so as to describe the problem).  Restore solution at start of
+           line search. */
+        opl_dcopy(n, S(ws->mark), x);
+        opl_dcopy(n, Y(ws->mark), g);
+        ws->gnorm = ws->g0norm;
+        *f = ws->f0;
         break;
       }
     }
 
     /* Request the caller to compute the set of unbinded variables. */
-    SET_TASK(OPL_TASK_FREEVARS, "determine free variables");
-    break;
+    return success(ws, OPL_TASK_FREEVARS, "determine free variables");
 
   case OPL_TASK_FREEVARS:
     /* Copy the (projected) gradient into D and compute the norm of the
        (projected) gradient. */
-    if (check_free(n, isfree, h, &task, csave) != 0) {
+    if (check_free(ws, isfree, h) != 0) {
       break;
     }
     opl_dcopy_free(n, g, d, isfree);
-    gnorm = opl_dnrm2(n, d);
-    if (gnorm == zero) {
-      SET_TASK(OPL_TASK_CONV, "local minimum found");
-      break;
+    ws->gnorm = opl_dnrm2(n, d);
+    if (ws->gnorm == zero) {
+      return success(ws, OPL_TASK_CONV, "local minimum found");
     }
-    if (nevals > 1) {
+    if (ws->evaluations > 1) {
       /* Compute the step and gradient change (i.e., update L-BFGS data).
          Note: we always compute the effective step (parameter difference) to
          account for bound constraints and, at least, numerical rounding or
          truncation errors. */
-      for (Ym = Y(mark), i = 0; i < n; ++i) {
+      for (Ym = Y(ws->mark), i = 0; i < n; ++i) {
         Ym[i] -= g[i];
       }
-      for (Sm = S(mark), i = 0; i < n; ++i) {
+      for (Sm = S(ws->mark), i = 0; i < n; ++i) {
         Sm[i] -= x[i];
       }
       if (isfree == NULL) {
-        rho[mark] = opl_ddot(n, Y(mark), S(mark));
+        ws->rho[ws->mark] = opl_ddot(n, Y(ws->mark), S(ws->mark));
       }
-      if (mp < m) {
-        ++mp;
+      if (ws->mp < m) {
+        ++ws->mp;
       }
 
       /* Test for global convergence. */
-      if (opl_noneof(n, S(mark))) {
-        SET_TASK(OPL_TASK_WARN, "no parameter change");
-      } else if (opl_noneof(n, Y(mark))) {
-        SET_TASK(OPL_TASK_WARN, "no gradient change");
+      if (opl_noneof(n, S(ws->mark))) {
+        return success(ws, OPL_TASK_WARN, "no parameter change");
+      } else if (opl_noneof(n, Y(ws->mark))) {
+        return success(ws, OPL_TASK_WARN, "no gradient change");
       } else {
-        double change = max(fabs(*f - f0), fabs(stp*g0d));
-        if (change <= frtol*fabs(f0)) {
-          SET_TASK(OPL_TASK_CONV, "FRTOL test satisfied");
-        } else if (change <= fatol) {
-          SET_TASK(OPL_TASK_CONV, "FATOL test satisfied");
+        double change = max(fabs(*f - ws->f0), fabs(ws->stp*ws->g0d));
+        if (change <= ws->frtol*fabs(ws->f0)) {
+          return success(ws, OPL_TASK_CONV, "FRTOL test satisfied");
+        } else if (change <= ws->fatol) {
+          return success(ws, OPL_TASK_CONV, "FATOL test satisfied");
         }
       }
     }
-    if (task == OPL_TASK_FREEVARS) {
-      /* Set task to signal a new iterate. */
-      SET_TASK(OPL_TASK_NEWX, "new improved solution available for inspection");
-    }
-    break;
+
+    /* Set task to signal a new iterate. */
+    return success(ws, OPL_TASK_NEWX, "new improved solution available for inspection");
 
   case OPL_TASK_NEWX:
   case OPL_TASK_CONV:
   case OPL_TASK_WARN:
     /* Compute a new search direction.  D already contains the (projected) gradient. */
-    if (mp > 0) {
-      /* Compute new search direction H(k).g(k)
-       * based on the two-loop recursion L-BFGS formula.  H(k) is the limited
-       * memory BFGS approximation of the inverse Hessian, g(k) is the
-       * gradient at k-th step.  H(k) is approximated by using the M last
-       * pairs (s, y) where:
-       *
-       *   s(j) = x(j+1) - x(j)
-       *   y(j) = g(j+1) - g(j)
-       *
-       * The two-loop recursion algorithm writes:
-       *
-       *   1- start with current gradient:
-       *        d := g(k)
-       *
-       *   2- for j = k-1, ..., k-m
-       *        rho(j) = s(j)'.y(j)           (save rho(j))
-       *        alpha(j) = (s(j)'.d)/rho(j)   (save alpha(j))
-       *        d := d - alpha(j) y(j)
-       *
-       *   3- apply approximation of inverse k-th Hessian:
-       *        d := H0(k).d
-       *      for instance:
-       *        d := (rho(k-1)/(y(k-1)'.y(k-1))) d
-       *
-       *   4- for j = k-m, ..., k-1
-       *        d := d + (alpha(j) - (y(j)'.d)/rho(j)) s(j)
-       *
-       * Note: in fact, this program saves -S and -Y, but by looking at
-       * above relations it is clear that this change of sign:
-       *  - has no influence on RHO, and dot products between S and Y;
-       *  - changes the sign of ALPHA but not that of ALPHA(j) times
-       *    S(j) or Y(j);
-       * the two-loop recursion therefore involves the same equations
-       * with:     s(j) = x(j+1) - x(j)  and  y(j) = g(j+1) - g(j)
-       * or with:  s(j) = x(j) - x(j+1)  and  y(j) = g(j) - g(j+1).
-       */
-      double gamma = zero;
-      opl_integer_t off = mark + m + 1;
-
-      for (k = 1; k <= mp; ++k) {
-        j = (off - k)%m;
-        if (isfree != NULL) {
-          rho[j] = opl_ddot_free(n, S(j), Y(j), isfree);
-        }
-        if (rho[j] > zero) {
-          alpha[j] = opl_ddot(n, S(j), d)/rho[j];
-          opl_daxpy_free(n, -alpha[j], Y(j), d, isfree);
-          if (gamma <= zero) {
-            double yty = opl_ddot_free(n, Y(j), Y(j), isfree);
-            if (yty > zero) {
-              gamma = rho[j]/yty;
-            }
-          }
-        }
-      }
-      if (h != NULL) {
-        /* Apply diagonal preconditioner. */
-        for (i = 0; i < n; ++i) {
-          d[i] *= h[i];
-        }
-      } else if (gamma > zero) {
-        /* Apply initial H (i.e. just scale D) and perform the second stage of
-           the 2-loop recursion. */
-        opl_dscal(n, gamma, d);
-      } else {
-        /* All correction pairs are invalid: manage to restart the L-BFGS
-           recursion.  Note that D has not changed so it is the (projected)
-           gradient. */
-        ++nrestarts;
-        mp = 0;
-      }
-      for (k = mp; k >= 1; --k) {
-        j = (off - k)%m;
-        if (rho[j] > zero) {
-          opl_daxpy_free(n, alpha[j] - opl_ddot(n, Y(j), d)/rho[j],
-                         S(j), d, isfree);
-        }
-      }
-
-      if (mp > 0) {
+    if (ws->mp > 0) {
+      /* Apply L-BFGS recursion to compute a search direction. */
+      compute_direction(ws, d, isfree, h);
+      if (ws->mp > 0) {
         /* Set initial step size and compute dot product of gradient and search
-           direction.  If L-BFGS recursion filed to produce a sufficient descent
-           search direction, we restart the algorithm with steepest descent. */
-        stp = 1.0;
-        gd = -opl_ddot(n, g, d);
-        if (epsilon > zero) {
-          descent = (gd <= -epsilon*gnorm*opl_dnrm2(n, d));
+           direction.  If L-BFGS recursion filed to produce a sufficient
+           descent search direction, we restart the algorithm with steepest
+           descent. */
+        int descent;
+        ws->stp = 1.0;
+        ws->gd = -opl_ddot(n, g, d);
+        if (ws->epsilon > zero) {
+          descent = (ws->gd <= -ws->epsilon*ws->gnorm*opl_dnrm2(n, d));
         } else {
-          descent = (gd < zero);
+          descent = (ws->gd < zero);
         }
         if (! descent) {
           /* Manage to restart the L-BFGS with steepest descent. */
-          ++nrestarts;
-          mp = 0;
+          ws->mp = 0;
           opl_dcopy_free(n, g, d, isfree);
         }
       }
+      if (ws->mp <= 0) {
+        /* L-BFGS recursion has been restarter because it has failed to produce
+           an acceptable search direction. */
+          ++ws->restarts;
+      }
     }
 
-    if (mp == 0) {
+    if (ws->mp == 0) {
       /* Compute initial search direction (or after a restart).  D is already
          the (projected) gradient. */
       if (h != NULL) {
@@ -462,62 +397,62 @@ opl_vmlmb_next(double x[], double *f, double g[],
         for (i = 0; i < n; ++i) {
           d[i] *= h[i];
         }
-        stp = 1.0;
-        gd = -opl_ddot(n, g, d);
-        if (gd >= zero) {
-          ERROR("preconditioner is not positive definite");
-          break;
+        ws->stp = 1.0;
+        ws->gd = -opl_ddot(n, g, d);
+        if (ws->gd >= zero) {
+          return failure(ws, OPL_NOT_POSITIVE_DEFINITE,
+                         "preconditioner is not positive definite");
         }
       } else {
         /* No preconditioning, use a small step along the steepest descent. */
-        if (delta > zero) {
-          stp = (opl_dnrm2(n, x)/gnorm)*delta;
+        if (ws->delta > zero) {
+          ws->stp = (opl_dnrm2(n, x)/ws->gnorm)*ws->delta;
         } else {
-          stp = zero;
+          ws->stp = zero;
         }
-        if (stp <= zero) {
+        if (ws->stp <= zero) {
           /* The following step length is quite arbitrary but to avoid this
              would require to know the typical size of the variables. */
-          stp = one/gnorm;
+          ws->stp = one/ws->gnorm;
         }
-        gd = -gnorm*gnorm;
+        ws->gd = -ws->gnorm*ws->gnorm;
       }
     }
 
     /* Advance the mark and save point at start of line search.  Note that this
        point has forcibly been projected so it is feasible. */
-    mark = (mark + 1)%m;
-    f0 = *f;
-    g0d = gd;
-    g0norm = gnorm;
-    opl_dcopy(n, x, S(mark)); /* save parameters X0 */
-    opl_dcopy(n, g, Y(mark)); /* save gradient G0 */
+    ws->mark = (ws->mark + 1)%m;
+    ws->f0 = *f;
+    ws->g0d = ws->gd;
+    ws->g0norm = ws->gnorm;
+    opl_dcopy(n, x, S(ws->mark)); /* save parameters X0 */
+    opl_dcopy(n, g, Y(ws->mark)); /* save gradient G0 */
 
     /* Set step bounds and task to start line search. */
-    stpmin = zero;
 #if 1
-    stpmax = STPMAX;
+    stpmax = DEFAULT_STPMAX;
 #else
     if (have_fmin) {
-      stpmax = (fmin - f0)/(sgtol*g0d);
+      stpmax = (ws->fmin - ws->f0)/(ws->sgtol*ws->g0d);
     } else {
-      double temp = fabs(f0);
+      double temp = fabs(ws->f0);
       if (temp < 1.0) {
 	temp = 1.0;
       }
-      stpmax = temp/(sgtol*g0d);
+      stpmax = temp/(ws->sgtol*ws->g0d);
     }
 #endif
-    stp = min(stp, stpmax);
-    task = OPL_TASK_START;
-    info = opl_csrch(*f, gd, &stp, sftol, sgtol, sxtol, stpmin, stpmax,
-                     &task, csave, isave, dsave);
-    if (info == 1) {
-      /* Compute the new iterate (otherwise, it must be an error and there is
-         nothing to do). */
-      next_step(n, x, S(mark), stp, d, &task, csave);
+    ws->stp = min(ws->stp, stpmax);
+    opl_csrch_start(&ws->lnsrch, *f, ws->gd, ws->stp,
+                    SFTOL(ws), SGTOL(ws), SXTOL(ws),
+                    zero, stpmax);
+    if (TASK(ws) != OPL_TASK_FG) {
+      /* Some error occured (task and context should have been set so as to
+         describe the problem). */
+      break;
     }
-    break;
+    /* Compute the new iterate. */
+    return next_step(ws, x);
 
   case OPL_TASK_ERROR:
     /* Nothing to do then. */
@@ -525,72 +460,150 @@ opl_vmlmb_next(double x[], double *f, double g[],
 
   default:
     /* Probably an error. */
-    SET_TASK(OPL_TASK_ERROR, "corrupted workspace");
-    break;
+    return failure(ws, OPL_CORRUPTED, "corrupted workspace");
   }
 
-  /* Save local variables (but constant ones) and return TASK. */
-  isave[INDEX_OF_TASK]      = task;
-  isave[INDEX_OF_ITER]      = iter;
-  isave[INDEX_OF_MARK]      = mark;
-  isave[INDEX_OF_MP]        = mp;
-#if 0
-  isave[INDEX_OF_FLAGS]     = flags; /* constant */
-#endif
-  isave[INDEX_OF_NEVALS]    = nevals;
-  isave[INDEX_OF_NRESTARTS] = nrestarts;
+  return TASK(ws);
 
-#if 0
-  dsave[INDEX_OF_SFTOL]     = sftol; /* constant */
-  dsave[INDEX_OF_SGTOL]     = sgtol; /* constant */
-  dsave[INDEX_OF_SXTOL]     = sxtol; /* constant */
-  dsave[INDEX_OF_FRTOL]     = frtol; /* constant */
-  dsave[INDEX_OF_FATOL]     = fatol; /* constant */
-  dsave[INDEX_OF_FMIN]      = fmin;  /* constant */
-#endif
-  dsave[INDEX_OF_F0]        = f0;
-  dsave[INDEX_OF_GD]        = gd;
-  dsave[INDEX_OF_G0D]       = g0d;
-  dsave[INDEX_OF_STP]       = stp;
-  dsave[INDEX_OF_STPMIN]    = stpmin;
-  dsave[INDEX_OF_STPMAX]    = stpmax;
-#if 0
-  dsave[INDEX_OF_DELTA]     = delta;   /* constant */
-  dsave[INDEX_OF_EPSILON]   = epsilon; /* constant */
-#endif
-  dsave[INDEX_OF_GNORM]    = gnorm;
-  dsave[INDEX_OF_G0NORM]   = g0norm;
-  return task;
+# undef Y
+# undef S
+# undef SUCCESS
+# undef FAILURE
+
 }
 
-#undef SET_TASK
-#undef Y
-#undef S
-
-/*---------------------------------------------------------------------------*/
-
+/*
+ * Compute new search direction H(k).d(k) based on the two-loop recursion
+ * L-BFGS formula (operation is done in-place).  H(k) is the limited memory
+ * BFGS approximation of the inverse Hessian, d(k) has been initialized with is
+ * the (projected) gradient at k-th step.  H(k) is approximated by using the M
+ * last pairs (s, y) where:
+ *
+ *   s(j) = x(j+1) - x(j)
+ *   y(j) = g(j+1) - g(j)
+ *
+ * or:
+ *
+ *   s(j) = x(j) - x(j+1)
+ *   y(j) = g(j) - g(j+1)
+ *
+ * Indeed, the way the differences are computed does not matter (as far as all
+ * differences are computed similarly), because: it has no influence on RHO(j),
+ * and on dot products between S(j) and Y(j); it changes the sign of ALPHA(j)
+ * and BETA but not that of ALPHA(j) - BETA times S(j) or Y(j).
+ *
+ * The two-loop recursion algorithm writes:
+ *
+ *   1- start with current gradient:
+ *        d := +/- g(k)
+ *
+ *   2- for j = k-1, ..., k-m
+ *        rho(j) = s(j)'.y(j)           (save rho(j))
+ *        alpha(j) = (s(j)'.d)/rho(j)   (save alpha(j))
+ *        d := d - alpha(j) y(j)
+ *
+ *   3- apply approximation of inverse k-th Hessian:
+ *        d := H0(k).d
+ *      for instance:
+ *        d := (rho(k-1)/(y(k-1)'.y(k-1))) d
+ *
+ *   4- for j = k-m, ..., k-1
+ *        d := d + (alpha(j) - (y(j)'.d)/rho(j)) s(j)
+ */
 static void
-next_step(opl_integer_t n, double x[], const double x0[], double stp,
-          const double d[], int* task, char csave[])
+compute_direction(opl_vmlmb_workspace_t* ws, double d[],
+                  const opl_logical_t isfree[], const double h[])
 {
-  opl_integer_t i;
+  double gamma = zero;
+  opl_integer_t m = ws->m;
+  opl_integer_t mp = ws->mp;
+  opl_integer_t n = ws->n;
+  opl_integer_t off = ws->mark + m + 1;
+  opl_integer_t i, j, k;
+  double* rho = ws->rho;
+  double* alpha = ws->alpha;
+  double** S_ = ws->S;
+  double** Y_ = ws->Y;
+
+# define S(j) S_[j]
+# define Y(j) Y_[j]
+
+  /* First loop of the L-BFGS recursion. */
+  for (k = 1; k <= mp; ++k) {
+    j = (off - k)%m;
+    if (isfree != NULL) {
+      rho[j] = opl_ddot_free(n, S(j), Y(j), isfree);
+    }
+    if (rho[j] > zero) {
+      alpha[j] = opl_ddot(n, S(j), d)/rho[j];
+      opl_daxpy_free(n, -alpha[j], Y(j), d, isfree);
+      if (gamma <= zero) {
+        double yty = opl_ddot_free(n, Y(j), Y(j), isfree);
+        if (yty > zero) {
+          gamma = rho[j]/yty;
+        }
+      }
+    }
+  }
+
+  /* Apply initial approximation of the inverse Hessian. */
+  if (h != NULL) {
+    /* Apply diagonal preconditioner. */
+    for (i = 0; i < n; ++i) {
+      d[i] *= h[i];
+    }
+  } else if (gamma > zero) {
+    /* Apply initial H (i.e. just scale D) and perform the second stage of
+       the 2-loop recursion. */
+    opl_dscal(n, gamma, d);
+  } else {
+    /* All correction pairs are invalid: manage to restart the L-BFGS
+       recursion.  Note that D is left unchanged in that case. */
+    ++ws->restarts;
+    ws->mp = 0;
+    return;
+  }
+
+  /* Second loop of the L-BFGS recursion. */
+  for (k = mp; k >= 1; --k) {
+    j = (off - k)%m;
+    if (rho[j] > zero) {
+      double beta = opl_ddot(n, Y(j), d)/rho[j];
+      opl_daxpy_free(n, alpha[j] - beta, S(j), d, isfree);
+    }
+  }
+
+# undef S
+# undef Y
+
+}
+
+static opl_task_t
+next_step(opl_vmlmb_workspace_t* ws, double x[])
+{
+  double stp = ws->stp;
+  const double* d = ws->d;
+  const double* x0 = ws->S[ws->mark];
+  opl_integer_t i, n = ws->n;
 
   /* Compute the new iterate. */
   for (i = 0; i < n; ++i) {
     x[i] = x0[i] - stp*d[i];
   }
 
-  *task = OPL_TASK_FG;
-  opl_mcopy(VMLMB_NEXT "compute f(x) and g(x)", csave);
+  /* Require the caller to compute the function and its gradient. */
+  opl_set_context(&CONTEXT(ws), OPL_SUCCESS,
+                  "compute f(x) and g(x)", OPL_PERMANENT);
+  return (TASK(ws) = OPL_TASK_FG);
 }
 
 static int
-check_free(opl_integer_t n, opl_logical_t isfree[],
-           const double h[], int* task, char csave[])
+check_free(opl_vmlmb_workspace_t* ws, opl_logical_t isfree[],
+           const double h[])
 {
   if (h != NULL) {
     const double zero = 0.0;
-    opl_integer_t i;
+    opl_integer_t i, n = ws->n;
     if (isfree != NULL) {
       /* fix ISFREE array */
       for (i = 0; i < n; ++i) {
@@ -602,8 +615,8 @@ check_free(opl_integer_t n, opl_logical_t isfree[],
       /* check that H is positive definite */
       for (i = 0; i < n; ++i) {
 	if (h[i] <= zero) {
-	  opl_mcopy("opl_vmlmb_next: H is not positive definite", csave);
-	  *task = OPL_TASK_ERROR;
+          failure(ws, OPL_NOT_POSITIVE_DEFINITE,
+                  "initial inverse Hessian is not positive definite");
 	  return -1;
 	}
       }
@@ -613,55 +626,190 @@ check_free(opl_integer_t n, opl_logical_t isfree[],
 }
 
 /*---------------------------------------------------------------------------*/
+/* MEMORY MANAGEMENT FOR VMLMB */
 
-#define EMIT_CODE(name, NAME)                                   \
-  int opl_vmlmb_set_##name(const char csave[],                  \
-                           opl_integer_t isave[],               \
-                           double dsave[],                      \
-                           double new_value,                    \
-                           double *old_value)                   \
-  {                                                             \
-    int test = ((isave[INDEX_OF_FLAGS] & FLAG_##NAME) != 0);    \
-    if (test && old_value != (double *)NULL) {                  \
-      *old_value = dsave[INDEX_OF_##NAME];                      \
-    }                                                           \
-    dsave[INDEX_OF_##NAME] = new_value;                         \
-    isave[INDEX_OF_FLAGS] |= FLAG_##NAME;                       \
-    return test;                                                \
-  }                                                             \
-  int opl_vmlmb_get_##name(const char csave[],                  \
-                           const opl_integer_t isave[],         \
-                           const double dsave[],                \
-                           double *ptr)                         \
-  {                                                             \
-    int test = ((isave[INDEX_OF_FLAGS] & FLAG_##NAME) != 0);    \
-    if (test && ptr != (double *)NULL) {                        \
-      *ptr = dsave[INDEX_OF_##NAME];                            \
-    }                                                           \
-    return test;                                                \
+/*
+ * A monolithic workspace is organized in memory as follows (starting from the
+ * base address):
+ *
+ *   base:           workspace structure
+ *                   padding for proper alignment
+ *   base + offset1: 2 arrays of M pointers (for S and Y)
+ *                   padding for proper alignment
+ *   base + offset2: 2 arrays of M reals (for ALPHA and RHO)
+ *                   1 array of N reals (for D, the search direction)
+ *                   2*M arrays of N reals (for S and Y)
+ */
+
+static const size_t offset1 = OPL_ROUND_UP(sizeof(opl_vmlmb_workspace_t),
+                                           sizeof(void*));
+
+static size_t workspace_offset2(size_t m)
+{
+  return OPL_ROUND_UP(offset1 + 2*m*sizeof(void*), sizeof(double));
+}
+
+static size_t number_of_reals(size_t n, size_t m)
+{
+  return (2*m*(n + 1) + n);
+}
+
+size_t
+opl_vmlmb_monolithic_workspace_size(opl_integer_t n, opl_integer_t m)
+{
+  if (n <= 0 || m <= 0) {
+    errno = EINVAL;
+    return 0;
   }
-EMIT_CODE(fmin, FMIN)
-#undef EMIT_CODE
+  return workspace_offset2(m) + number_of_reals(n, m)*sizeof(double);
+}
 
-#define EMIT_CODE(type, foo, FOO, save)                                 \
-  type OPL_CONCAT(opl_vmlmb_get_,foo)(const char csave[],               \
-                                      const opl_integer_t isave[],      \
-                                      const double dsave[])             \
-  {                                                                     \
-    return dsave[OPL_CONCAT(INDEX_OF_,FOO)];                            \
+opl_vmlmb_workspace_t*
+opl_vmlmb_monolithic_workspace_init(void* buf, opl_integer_t n, opl_integer_t m)
+{
+  size_t offset2, size;
+  opl_integer_t k;
+  opl_vmlmb_workspace_t* ws;
+  double* arr;
+
+  /* Check arguments. */
+  if (buf == NULL) {
+    if (errno != ENOMEM) {
+      errno = EFAULT;
+    }
+    return NULL;
   }
-EMIT_CODE(double, sftol,      SFTOL,    dsave)
-EMIT_CODE(double, sgtol,      SGTOL,    dsave)
-EMIT_CODE(double, sxtol,      SXTOL,    dsave)
-EMIT_CODE(double, frtol,      FRTOL,    dsave)
-EMIT_CODE(double, fatol,      FATOL,    dsave)
-EMIT_CODE(double, step,       STP,      dsave)
-EMIT_CODE(double, delta,      DELTA,    dsave)
-EMIT_CODE(double, epsilon,    EPSILON,  dsave)
-EMIT_CODE(double, gnorm,     GNORM,   dsave)
-EMIT_CODE(opl_integer_t, iter,      ITER,      isave)
-EMIT_CODE(opl_integer_t, nevals,    NEVALS,    isave)
-EMIT_CODE(opl_integer_t, nrestarts, NRESTARTS, isave)
-#undef EMIT_CODE
+  if (n <= 0 || m <= 0) {
+    errno = EINVAL;
+    return NULL;
+  }
 
-/*---------------------------------------------------------------------------*/
+  /* Compute offsets and size.  Clear buffer. */
+  offset2 = workspace_offset2(m);
+  size = offset2 + number_of_reals(n, m)*sizeof(double);
+  memset(buf, 0, size);
+
+  /* Instanciate workspace. */
+  ws = (opl_vmlmb_workspace_t*)buf;
+  ws->m = m;
+  ws->n = n;
+  ws->S = (double**)((byte_t*)ws + offset1);
+  ws->Y = ws->S + m;
+  ws->alpha = (double*)((byte_t*)ws + offset2);
+  ws->rho = ws->alpha + m;
+  ws->d = ws->rho + m;
+  arr = ws->d;
+  for (k = 0; k < m; ++k) {
+    ws->S[k] = (arr += n);
+    ws->Y[k] = (arr += n);
+  }
+  opl_vmlmb_restart(ws);
+  return opl_vmlmb_set_defaults(ws);
+}
+
+opl_vmlmb_workspace_t*
+opl_vmlmb_set_defaults(opl_vmlmb_workspace_t* ws)
+{
+  SFTOL(ws) = DEFAULT_SFTOL;
+  SGTOL(ws) = DEFAULT_SGTOL;
+  SXTOL(ws) = DEFAULT_SXTOL;
+  ws->fatol = DEFAULT_FATOL;
+  ws->frtol = DEFAULT_FRTOL;
+  ws->delta = DEFAULT_DELTA;
+  ws->epsilon = DEFAULT_EPSILON;
+  opl_vmlmb_set_fmin(ws, NaN);
+  return ws;
+}
+
+static void
+free_split_workspace(void* ptr)
+{
+  opl_vmlmb_workspace_t* ws = (opl_vmlmb_workspace_t*)ptr;
+  opl_integer_t k, m = ws->m;
+  double* tmp;
+
+  if ((tmp = ws->d) != NULL) {
+    ws->d = NULL;
+    free(tmp);
+  }
+  for (k = 0; k < m; ++k) {
+    if ((tmp = ws->S[k]) != NULL) {
+      ws->S[k] = NULL;
+      free(tmp);
+    }
+    if ((tmp = ws->Y[k]) != NULL) {
+      ws->Y[k] = NULL;
+      free(tmp);
+    }
+  }
+  free(ws);
+}
+
+opl_vmlmb_workspace_t*
+opl_vmlmb_create(opl_integer_t n, opl_integer_t m)
+{
+  size_t offset2, size;
+  opl_integer_t k;
+  opl_vmlmb_workspace_t* ws;
+
+  if (n <= 0 || m <= 0) {
+    errno = EINVAL;
+    return 0;
+  }
+  if (m*n <= 10000) {
+    /* For small problems, the workspace is allocated as a single block of
+       memory. */
+    size = opl_vmlmb_monolithic_workspace_size(n, m);
+    ws = opl_vmlmb_monolithic_workspace_init(malloc(size), n, m);
+    if (ws == NULL) {
+      return NULL;
+    }
+    ws->free = free;
+    return ws;
+  } else {
+    /* For larger problems, the philosophy is to store the workspace structure
+       and related small arrays in a single block of memory, while larger
+       arrays (d, S and Y) are stored separately. */
+    offset2 = workspace_offset2(m);
+    size = offset2 + 2*m*sizeof(double);
+    ws = (opl_vmlmb_workspace_t*)malloc(size);
+    if (ws == NULL) {
+      return NULL;
+    }
+    memset(ws, 0, size);
+    ws->free = free_split_workspace;
+    ws->m = m;
+    ws->n = n;
+    ws->S = (double**)((byte_t*)ws + offset1);
+    ws->Y = ws->S + m;
+    ws->alpha = (double*)((byte_t*)ws + offset2);
+    ws->rho = ws->alpha + m;
+    if ((ws->d = NEW(double, n)) == NULL) {
+    destroy:
+      opl_vmlmb_destroy(ws);
+      return NULL;
+    }
+    for (k = 0; k < m; ++k) {
+      if ((ws->S[k] = NEW(double, n)) == NULL ||
+          (ws->Y[k] = NEW(double, n)) == NULL) {
+        goto destroy;
+      }
+    }
+    opl_vmlmb_restart(ws);
+    return opl_vmlmb_set_defaults(ws);
+  }
+}
+
+void
+opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws)
+{
+  if (ws != NULL) {
+    if (ws->free == NULL) {
+      fprintf(stderr, "*** ERROR *** %s\n",
+              "attempt to destroy a foreign monolithic workspace, "
+              "read the documentation!");
+    } else {
+      ws->free(ws);
+    }
+  }
+}

@@ -36,8 +36,8 @@ DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md \
     optimpack.bib
 
 CODE_SRC = $(srcdir)/src
-CODE_FILES = opl_algebra.c opl_limits.h opl_lnsrch.c opl_vmlmb.c opl_utils.c \
-    optimpacklegacy.h
+CODE_FILES = opl_algebra.c opl_lnsrch.c opl_vmlmb.c opl_utils.c \
+     opl_limits.h  opl_private.h optimpacklegacy.h
 
 IDL_SRC = $(srcdir)/idl
 IDL_FILES = \
@@ -59,7 +59,7 @@ IDL_CONTRIB_SRC = $(srcdir)/idl/contrib
 IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
 
 YORICK_SRC = $(srcdir)/yorick
-YORICK_FILES = Makefile optimpacklegacy.i \
+YORICK_FILES = Makefile opl_yorick.c optimpacklegacy.i \
     optimpacklegacy-test.i optimpacklegacy-test.out
 
 all:

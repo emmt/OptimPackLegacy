@@ -29,173 +29,112 @@
 
 if (is_func(plug_in)) plug_in, "optimpacklegacy";
 
-extern __opl_csrch;
-/* PROTOTYPE
-   int opl_csrch(double f, double g, double array stp,
-                double ftol, double gtol, double xtol,
-		double stpmin, double stpmax, int array task,
-		char array csave, long array isave, double array dsave);
+local OPL_TASK_START, OPL_TASK_FG, OPL_TASK_FREEVARS, OPL_TASK_NEWX;
+local OPL_TASK_CONV, OPL_TASK_WARN, OPL_TASK_ERROR;
+extern opl_vmlmb_create;
+/* DOCUMENT ws = opl_vmlmb_create(dims, mem, key1=val1, key2=val2, ...);
+
+     Create a new workspace for the VMLMB algorithm.  DIMS gives the dimension
+     list of the variables (like `dimsof`) and MEM is the number of previous
+     steps to memorize.
+
+     The workspace WS can be used to retrieve the following attributes:
+
+       ws.dims ............. Dimension list of the variables.
+       ws.size ............. Size of the problem (number of variables).
+       ws.mem .............. Number of previous steps to memorize.
+       ws.task ............. Current pending task.
+       ws.evaluations ...... Number of function calls.
+       ws.iterations ....... Number of iterations.
+       ws.restarts ......... Number of algorithm restarts.
+       ws.step ............. Lenght of the current or last step.
+       ws.status ........... Current status value.
+       ws.reason ........... Explanatory message about current status/task.
+       ws.gnorm ............ Euclidean norm of the (projected) gradient at the
+                             last successful step.
+       ws.fmin ............. Strict lower bound for the function (NaN if not
+                             set).
+       ws.fatol ............ Absolute function tolerance for the convergence.
+       ws.frtol ............ Relative function tolerance for the convergence.
+       ws.sftol ............ Tolerance for the sufficient decrease condition.
+       ws.sgtol ............ Tolerance for the curvature condition.
+       ws.sxtol ............ Relative tolerance for an acceptable step.
+       ws.delta ............ Relative size of a small step.
+       ws.epsilon .......... Threshold for the sufficient descent condition.
+
+     Attributes FMIN, FATOL, FRTOL, SFTOL, SGTOL, SXTOL, DELTA and EPSILON are
+     configurable via keywords when calling `opl_vmlmb_create`, they may be
+     configure later with `opl_vmlmb_configure`.  The other attributes are
+     read-only.
+
+     It not recommended to have MEM larger than the number of variables and it
+     is often the case that a modest value for MEM, say MEM=5, is as efficient
+     as larger values.  As you may expect, MEM has an incidence on the size of
+     the neessary memory which is about `(2*m*(n + 1) + n)*sizeof(double)`
+     where `n` is the number of variables and `m` is MEM.  Allocated memory is
+     automatically released when the returned workspace is no longer in use.
+
+     The pending task can take one of the following values:
+
+       OPL_TASK_START ...... Start line search.
+       OPL_TASK_FG ......... Caller has to compute function and gradient.
+       OPL_TASK_FREEVARS ... Caller has to determine the free variables.
+       OPL_TASK_NEWX ....... New variables available for inspection.
+       OPL_TASK_CONV ....... Search has converged.
+       OPL_TASK_WARN ....... Search aborted with warning.
+       OPL_TASK_ERROR ...... Search aborted with error.
+
+
+   SEE ALSO opl_vmlmb_configure, opl_vmlmb_iterate, dimsof.
+ */
+
+extern opl_vmlmb_configure;
+/* DOCUMENT opl_vmlmb_configure, ws, key1=val1, key2=val2, ...;
+
+     Configure VMLMB workspace WS.  Parameters are provided as keyword-value
+     pairs.  See `opl_vmlmb_create` for a list of configurable settings. When
+     called as a function, WS is returned.
+
+   SEE ALSO opl_vmlmb_create
+ */
+
+extern opl_vmlmb_iterate;
+/* DOCUMENT task = opl_vmlmb_iterate(ws, x, f, g);
+         or task = opl_vmlmb_iterate(ws, x, f, g, isfree);
+         or task = opl_vmlmb_iterate(ws, x, f, g, isfree, h);
+
+     Perform one step of the VMLMB algorithm.  WS is VMLMB workspace, X gives
+     the variables, F and G are the function value and gradient at X.  ISFREE
+     is an optional array which indicates which variables are free to vary.
+     H is an optional array which provides a diagonal preconditioner.  The
+     returned value is the next pending task.
+
+     All specified arrays must have the same dimensions as those expected by
+     WS.  F must be a simple variable reference (not an expression), X and G
+     must be arrays of double's; if specified, ISFREE is an array of int's; if
+     specified, H is an array of double's.
+
+   SEE ALSO opl_vmlmb_create, opl_vmlmb_restore.
+ */
+
+extern opl_vmlmb_restore;
+/* DOCUMENT task = opl_vmlmb_restore(ws, x, f, g);
+
+     Restore last line search starting point for VMLMB workspace WS.  Calling
+     this is only effective if task is OPL_TASK_FG.  Arguments X, F and G are
+     the same as in `opl_vmlmb_iterate`.
+
+   SEE ALSO opl_vmlmb_iterate.
 */
 
-func opl_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
-               &csave, isave, dsave)
-{
-  if (numberof(task) != 1) error, "TASK must be a scalar";
-  if (structof(isave) != long || numberof(isave) < 2)
-    error, "bad ISAVE array";
-  if (structof(dsave) != double || numberof(dsave) < 12)
-    error, "bad DSAVE array";
-  itask = int(task);
-  cbuf = array(char, 128);
-  info = __opl_csrch(f, g, stp, ftol, gtol, xtol, stpmin, stpmax, itask,
-                    cbuf, isave, dsave);
-  task = long(itask);
-  csave = string((task == 1 ? 0 : &cbuf));
-  return long(info);
-}
+extern opl_vmlmb_restart;
+/* DOCUMENT task = opl_vmlmb_restart(ws);
 
-func opl_vmlmb_setup(n, m, fmin=, fatol=, frtol=, sftol=, sgtol=, sxtol=,
-                     delta=, epsilon=)
-{
-  csave = array(char, 128);
-  isave = array(long,  11);
-  dsave = array(double, 28 + n + 2*m*(n + 1));
-  if (is_void(frtol)) frtol = 1e-10;
-  if (is_void(fatol)) fatol = 1e-13;
-  if (is_void(sftol)) sftol = 0.001; // FIXME:
-  if (is_void(sgtol)) sgtol = 0.9;
-  if (is_void(sxtol)) sxtol = 0.1;
-  if (is_void(delta)) delta = 1e-3;
-  if (is_void(epsilon)) epsilon = 0.0;
-  task = long(__opl_vmlmb_setup(n, m, fatol, frtol, sftol, sgtol, sxtol,
-                               delta, epsilon, csave, isave, dsave));
-  if (task != 1) error, string(&csave);
-  ws = [&csave, &isave, &dsave];
-  if (! is_void(fmin)) {
-    opl_vmlmb_set_fmin, ws, fmin;
-  }
-  return ws;
-}
+      Set VMLMB workspace WS so that it can be used for a new optimization with
+      the same parameters.
 
-func opl_vmlmb_restart(ws)
-{
-  /* Extract workspace data. */
-  local m, n, csave, isave, dsave;
-  __opl_vmlmb_parse, ws;
-
-  /* Call wrapper. */
-  return long(__opl_vmlmb_restart(csave, isave, dsave));
-}
-
-func opl_vmlmb_restore(x, &f, g, ws)
-{
-  /* Extract workspace data. */
-  local m, n, csave, isave, dsave;
-  __opl_vmlmb_parse, ws;
-
-  /* Check other arguments. */
-  if (structof(x) != double || numberof(x) != n) {
-    error, "bad parameter array X";
-  }
-  if (structof(g) != double || numberof(g) != n) {
-    error, "bad gradient array G";
-  }
-
-  /* Call wrapper. */
-  fp = [0.0];
-  task = long(__opl_vmlmb_restore(x, fp, g, csave, isave, dsave));
-  f = fp(1);
-  return task;
-}
-
-func opl_vmlmb_next(x, &f, g, ws, isfree, h)
-{
-  /* Extract workspace data. */
-  local m, n, csave, isave, dsave;
-  __opl_vmlmb_parse, ws;
-
-  /* Check other arguments. */
-  if (structof(x) != double || numberof(x) != n) {
-    error, "bad parameter array X";
-  }
-  if (identof(f) > Y_DOUBLE || ! is_scalar(f)) {
-    error, "bad function value F";
-  }
-  if (structof(g) != double || numberof(g) != n) {
-    error, "bad gradient array G";
-  }
-  if (! is_void(isfree) && (structof(isfree) != int ||
-                            numberof(isfree) != n )) {
-    error, "bad array ISFREE";
-  }
-  if (! is_void(h) && (structof(h) != double ||
-                       numberof(h) != n )) {
-    error, "bad array H";
-  }
-
-  /* Call wrapper. */
-  fp = [double(f)]
-  task = long(__opl_vmlmb_next(x, fp, g, &isfree, &h, csave, isave, dsave));
-  f = fp(1);
-  return task;
-}
-
-func opl_vmlmb_get_msg(ws)         { return string(ws(1)); }
-
-func opl_vmlmb_get_task(ws)        { return (*ws(2))( 3); }
-func opl_vmlmb_get_m(ws)           { return (*ws(2))( 4); }
-func opl_vmlmb_get_n(ws)           { return (*ws(2))( 5); }
-func opl_vmlmb_get_iterations(ws)  { return (*ws(2))( 6); }
-func opl_vmlmb_get_mark(ws)        { return (*ws(2))( 7); }
-func opl_vmlmb_get_mp(ws)          { return (*ws(2))( 8); }
-func opl_vmlmb_get_flags(ws)       { return (*ws(2))( 9); }
-func opl_vmlmb_get_evaluations(ws) { return (*ws(2))(10); }
-func opl_vmlmb_get_restarts(ws)    { return (*ws(2))(11); }
-
-func opl_vmlmb_get_sftol(ws)       { return (*ws(3))(13); }
-func opl_vmlmb_get_sgtol(ws)       { return (*ws(3))(14); }
-func opl_vmlmb_get_sxtol(ws)       { return (*ws(3))(15); }
-func opl_vmlmb_get_frtol(ws)       { return (*ws(3))(16); }
-func opl_vmlmb_get_fatol(ws)       { return (*ws(3))(17); }
-func opl_vmlmb_get_fmin(ws)        { return (*ws(3))(18); }
-func opl_vmlmb_get_f0(ws)          { return (*ws(3))(19); }
-func opl_vmlmb_get_gd(ws)          { return (*ws(3))(20); }
-func opl_vmlmb_get_gd0(ws)         { return (*ws(3))(21); }
-func opl_vmlmb_get_step(ws)        { return (*ws(3))(22); }
-func opl_vmlmb_get_stepmin(ws)     { return (*ws(3))(23); }
-func opl_vmlmb_get_stepmax(ws)     { return (*ws(3))(24); }
-func opl_vmlmb_get_delta(ws)       { return (*ws(3))(25); }
-func opl_vmlmb_get_epsilon(ws)     { return (*ws(3))(26); }
-func opl_vmlmb_get_gnorm(ws)       { return (*ws(3))(27); }
-func opl_vmlmb_get_g0norm(ws)      { return (*ws(3))(28); }
-
-local opl_vmlmb_set_fmin;
-local opl_vmlmb_get_fmin;
-/* DOCUMENT old = opl_vmlmb_set_fmin(ws, fmin);
-         or fmin = opl_vmlmb_get_fmin(ws);
-
-      The function opl_vmlmb_set_fmin set the value of FMIN in workspace WS and
-      returns the previous value of FMIN if any (nil otherwise).
-
-      The function opl_vmlmb_get_fmin returns the actual value of FMIN in
-      workspace WS or nil if FMIN has never been set.
-
-   SEE ALSO: opl_vmlmb_setup.
- */
-func opl_vmlmb_set_fmin(ws, new)
-{
-  old = 0.0;
-  if (__opl_vmlmb_set_fmin(*ws(1), *ws(2), *ws(3), new, old)) {
-    return old;
-  }
-}
-func opl_vmlmb_get_fmin(ws)
-{
-  fmin = 0.0;
-  if (__opl_vmlmb_get_fmin(*ws(1), *ws(2), *ws(3), fmin)) {
-    return fmin;
-  }
-}
+   SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate.
+*/
 
 func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
               verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
@@ -292,7 +231,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         opl_csrch).
 
    SEE ALSO: opl_get_flags, opl_csrch,
-             opl_vmlmb_setup, opl_vmlmb_next.
+             opl_vmlmb_create, opl_vmlmb_iterate.
  */
 {
   /* Largest value of a long integer. */
@@ -386,9 +325,9 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   if (is_void(mem)) mem = min(n, 7);
   method_name = swrite(format="VMLMB %s bounds and MEM=%d",
                        (bounds != 0 ? "with" : "without"), mem);
-  ws = opl_vmlmb_setup(n, mem, fmin=fmin,
-                       fatol=fatol, frtol=frtol,
-                       sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+  ws = opl_vmlmb_create(n, mem, fmin=fmin,
+                        fatol=fatol, frtol=frtol,
+                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
 
   /* Start iterations. */
   task = 1;
@@ -403,6 +342,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     x = double(x);
   }
   local gx, gnorm, isfree, iter, step;
+  task = ws.task;
   for (;;) {
     if (task == 1) {
       /* Evaluate function and gradient. */
@@ -413,7 +353,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         stop = 1n;
         msg = swrite(format="warning: too many function evaluations (%d)\n",
                      eval);
-        opl_vmlmb_restore, x, fx, gx, ws;
+        task = opl_vmlmb_restore(ws, x, fx, gx);
       } else {
         if (bounds != 0) {
           if ((bounds & 1) == 1) {
@@ -441,13 +381,11 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
 
     /* Check for convergence. */
     if (task > 2) {
-      iter = opl_vmlmb_get_iterations(ws);
-      gnorm = opl_vmlmb_get_gnorm(ws);
       if (task > 3) {
         /* Error or warning. */
         stop = 1n;
-        msg = opl_vmlmb_get_msg(ws);
-      } else if (gnorm <= gtest) {
+        msg = ws.message;
+      } else if (ws.gnorm <= gtest) {
         stop = 1n;
         msg = swrite(format="convergence (%s)\n", "gradient small enough");
       } else if (iter > maxiter) {
@@ -465,11 +403,9 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       }
       timer, elapsed;
       cpu = 1e3*(elapsed(1) - cpu_start);
-      step = opl_vmlmb_get_step(ws);
-      if (task <= 2) {
-        iter = opl_vmlmb_get_iterations(ws);
-        gnorm = opl_vmlmb_get_gnorm(ws);
-      }
+      step = ws.step;
+      iter = ws.iterations;
+      gnorm = ws.gnorm;
       if (use_printer) {
         printer, output, iter, eval, cpu, fx, gnorm, step, x, extra;
       } else {
@@ -488,76 +424,15 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     }
 
     /* Call optimizer. */
-    task = opl_vmlmb_next(x, fx, gx, ws, isfree);
+    task = opl_vmlmb_iterate(ws, x, fx, gx, isfree);
   }
 }
 
-/*---------------------------------------------------------------------------*/
-/* PRIVATE ROUTINES */
+extern _opl_init;
+/* DOCUMENT _opl_init;
 
-func __opl_vmlmb_parse(ws)
-{
-  extern m, n, csave, isave, dsave;
-  if (structof(ws) != pointer || numberof(ws) != 3) {
-    error, "expecting VMLMB workspace";
-  }
-  eq_nocopy, csave, *ws(1);
-  if (structof(csave) != char || numberof(csave) != 128) {
-    error, "corrupted workspace (CSAVE)";
-  }
-  eq_nocopy, isave, *ws(2);
-  if (structof(isave) != long || numberof(isave) != 11) {
-    error, "corrupted workspace (ISAVE)";
-  }
-  m = isave(4);
-  n = isave(5);
-  eq_nocopy, dsave, *ws(3);
-  if (structof(dsave) != double || numberof(dsave) != 28 + n + 2*m*(1 + n)) {
-    error, "corrupted workspace (DSAVE)";
-  }
-
-}
-errs2caller, __opl_vmlmb_parse;
-
-extern __opl_vmlmb_setup;
-/* PROTOTYPE
-   int opl_vmlmb_setup(long n, long m,
-                       double fatol, double frtol,
-                       double sftol, double sgtol, double sxtol,
-                       double delta, double epsilon,
-                       char array csave, long array isave, double array dsave);
+     Restore/set global variables used by YOPL.  In principle, it is not needed
+     to call this subroutine (this is automatically done at startup) unless you
+     destroyed some constants.
 */
-
-extern __opl_vmlmb_next;
-/* PROTOTYPE
-   int opl_vmlmb_next(double array x, double array f, double array g,
-                      pointer isfree, pointer h,
-		      char array csave, long array isave, double array dsave);
-*/
-
-extern __opl_vmlmb_restart;
-/* PROTOTYPE
-   int opl_vmlmb_restart(char array csave, long array isave, double array dsave);
-*/
-
-extern __opl_vmlmb_restore;
-/* PROTOTYPE
-   int opl_vmlmb_restore(double array x, double array f, double array g,
-                         char array csave, long array isave, double array dsave);
-*/
-
-extern __opl_vmlmb_set_fmin;
-/* PROTOTYPE
-   int opl_vmlmb_set_fmin(char array csave,
-                          long array isave,
-                          double array dsave,
-                          double new_value,
-                          double array old_value);
-*/
-extern __opl_vmlmb_get_fmin;
-/* PROTOTYPE
-   int opl_vmlmb_get_fmin(char array csave,
-                         long array isave,
-                         double array dsave,
-                         double array value);
-*/
+_opl_init; /* restore global variables */
