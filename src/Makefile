@@ -41,7 +41,7 @@ RM = rm -f
 AR = ar
 ARFLAGS = rv
 
-LIBNAME = liboptimpack.a
+LIBNAME = liboptimpacklegacy.a
 VERSION = `sed < $(srcdir)/../VERSION -e 's/ //g'`
 OBJS = opl_algebra.o opl_lnsrch.o opl_utils.o opl_vmlmb.o
 
