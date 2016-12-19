@@ -79,6 +79,9 @@
 /* Offset (in bytes) of member M in structure S: */
 #define OPL_OFFSET_OF(s, m) ((size_t) &((s *)0)->m)
 
+/* Allocate memory for a given number of elements of a given type. */
+#define OPL_NEW(type, number)  (type*)malloc((number)*sizeof(type))
+
 /*---------------------------------------------------------------------------*/
 /* STRUCTURES */
 

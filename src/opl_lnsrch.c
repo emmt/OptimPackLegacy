@@ -29,6 +29,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include "opl_private.h"
 
@@ -39,10 +40,50 @@ static const double xtrapu = 4.0;
 
 /*---------------------------------------------------------------------------*/
 
+const size_t OPL_CSRCH_WORKSPACE_SIZE =
+  OPL_ROUND_UP(sizeof(opl_csrch_workspace_t), sizeof(double));
+
+size_t
+opl_csrch_get_workspace_size()
+{
+  return OPL_CSRCH_WORKSPACE_SIZE;
+}
+
+opl_csrch_workspace_t*
+opl_csrch_create_workspace()
+{
+  opl_csrch_workspace_t* ws = OPL_NEW(opl_csrch_workspace_t, 1);
+  if (ws != NULL) {
+    memset(ws, 0, sizeof(opl_csrch_workspace_t));
+    opl_initialize_context(&ws->context);
+  }
+  return ws;
+}
+
+void
+opl_csrch_destroy_workspace(opl_csrch_workspace_t* ws)
+{
+  if (ws != NULL) {
+    free((void*)ws);
+  }
+}
+
 opl_task_t
 opl_csrch_get_task(opl_csrch_workspace_t* ws)
 {
   return (ws != NULL ? ws->task : OPL_TASK_ERROR);
+}
+
+opl_task_t
+opl_csrch_get_status(opl_csrch_workspace_t* ws)
+{
+  return (ws != NULL ? ws->context.status : OPL_ILLEGAL_ADDRESS);
+}
+
+const char*
+opl_csrch_get_reason(opl_csrch_workspace_t* ws)
+{
+  return (ws != NULL ? ws->context.message : "illegal workspace address");
 }
 
 static opl_status_t

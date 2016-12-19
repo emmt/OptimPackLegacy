@@ -244,6 +244,118 @@ extern opl_status_t opl_success(opl_context_t* ctx);
 /* LINE SEARCH */
 
 /**
+ * @addtogroup MoreThuenteLineSearch
+ * @{
+ *
+ * @page csrch Moré & Thuente line search
+ * @tableofcontents
+ *
+ * Moré & Thuente line search method (@ref morethuente1984) finds a step that
+ * satisfies a sufficient decrease condition and a curvature condition.
+ *
+ * The function @link #opl_csrch_start should be called at the start of a line
+ * search to initiate the search.  The function @link #opl_csrch_iterate should
+ * then be called for each new tried point along the line search until the
+ * convergence of the search.
+ *
+ * The method updates an interval with endpoints `stx` and `sty`.  The
+ * interval is initially chosen so that it contains a minimizer of the
+ * modified function:
+ *
+ * <pre>
+ *       psi(stp) = f(stp) - f(0) - ftol*stp*g(0)
+ * </pre>
+ *
+ * where `f(0)` and `g(0) = f'(0)` are the value of the function and its
+ * derivative for `stp = 0`.  If `psi(stp) ≤ 0` and `g(stp) ≥ 0` for some step,
+ * then the interval is chosen so that it contains a minimizer of `f(stp)`.
+ * The algorithm is designed to find a step that satisfies the sufficient
+ * decrease condition:
+ *
+ * <pre>
+ *     f(stp) <= f(0) + ftol*stp*g(0),                            (1)
+ * </pre>
+ *
+ * and the curvature condition:
+ *
+ * <pre>
+ *     abs(g(stp)) <= gtol*abs(g(0)).                             (2)
+ * </pre>
+ *
+ * Relations (1) and (2) are called the strong Wolfe conditions.  If `ftol` is
+ * less than `gtol` and if, for example, the function is bounded below, then
+ * there is always a step which satisfies both conditions.  If no step can be
+ * found that satisfies both conditions, then the algorithm stops with a
+ * warning.  In this case `stp` only satisfies the sufficient decrease
+ * condition.
+ *
+ *
+ * @subsection example Example
+ *
+ * A typical invocation of the method has the following outline:
+ *
+ * <pre>
+ * opl_csrch_create_workspace();
+ * double f = ...;   // function value for STP=0
+ * double g = ...;   // derivative value for STP=0
+ * double stp = ...; // guess for next STP value to try (STP > 0.0)
+ * double ftol = 1e-3;
+ * double gtol = 0.9;
+ * double xtol = 0.1;
+ * double stpmin = 0;
+ * double stpmax = 1e20*stp;
+ * opl_csrch_start(ws, f, g, stp, ftol, gtol, xtol, stpmin, stpmax);
+ * for (;;) {
+ *     opl_task_t task = opl_csrch_get_task(ws);
+ *     if (task == OPL_TASK_FG) {
+ *         // Evaluate the function and the gradient at `stp`.
+ *         f = func(stp);
+ *         g = grad(stp);
+ *     } else if (task == OPL_TASK_CONV) {
+ *         // Search has converged.
+ *         break;
+ *     } else if (task == OPL_TASK_WARN) {
+ *         // Some problem prevents further progress.
+ *         fprintf(stderr, "warning in %s\n", opl_csrch_get_reason(ws));
+ *         exit(1);
+ *     } else {
+ *         // An error occured.
+ *         fprintf(stderr, "error in %s\n", , opl_csrch_get_reason(ws));
+ *         exit(1);
+ *     }
+ * }
+ * </pre>
+ *
+ * @subsection refs References
+ *
+ * @anchor morethuente1984
+ *     Jorge J. Moré and David J. Thuente, "Line search algorithms with
+ *     guaranteed sufficient decrease" in ACM Transactions on Mathematical
+ *     Software (TOMS) Volume 20, Issue 3, Pages 286-307 (September 1994).
+ *
+ *
+ * @subsection hist History
+ *
+ * MINPACK-1 Project. June 1983.
+ * Argonne National Laboratory.
+ * Jorge J. Moré and David J. Thuente.
+ *
+ * MINPACK-2 Project. November 1993.
+ * Argonne National Laboratory and University of Minnesota.
+ * Brett M. Averick, Richard G. Carter, and Jorge J. Moré.
+ *
+ * Yorick translation an improvements.  October 2001.
+ * C-version.  February 2003.
+ * Observatoire de Lyon (France).
+ * Éric Thiébaut.
+ *
+ * New C version with structured workspace.
+ * December 2016.
+ * Centre de Recherche Astrophysique de Lyon (France).
+ * Éric Thiébaut.
+ */
+
+/**
  * Possible values for an optimization task.
  */
 typedef enum {
@@ -264,11 +376,85 @@ typedef struct _opl_csrch_workspace opl_csrch_workspace_t;
 /**
  * Get the pending task of a line search instance.
  */
-extern opl_task_t
-opl_csrch_get_task(opl_csrch_workspace_t* ws);
+extern opl_task_t opl_csrch_get_task(opl_csrch_workspace_t* ws);
+
+/**
+ * Get the status of the last operation on a line search instance.
+ */
+extern opl_task_t opl_csrch_get_status(opl_csrch_workspace_t* ws);
+
+
+/**
+ * Get the message explaining the result of the last operation on a line search
+ * instance.
+ */
+extern const char* opl_csrch_get_reason(opl_csrch_workspace_t* ws);
+
+/**
+ * Get the size of a Moré & Thuente line search instance.
+ *
+ * This function can be used to determine the size (in bytes) of a Moré &
+ * Thuente line search instance for applications which want to directly manage
+ * memory.  A line search instance can be stored into any memory block of
+ * sufficient size and aligned on a multiple of the size of a `double`.
+ * However, the line search workspace can be assumed to have been properly
+ * initilaized only after a first call to @link #opl_csrch_start.
+ *
+ * @return The size in bytes of a Moré & Thuente line search instance.
+ */
+extern size_t opl_csrch_get_workspace_size();
+
+/**
+ * Create a new instance of Moré & Thuente line search.
+ *
+ * @return A new instance of Moré & Thuente line search.  When no longer
+ *         needed, this instance must be destroyed with @link
+ *         #olp_csrch_destroy_workspace. `NULL` is returned in case of error
+ *         (i.e. insufficient memory).
+ */
+extern opl_csrch_workspace_t* opl_csrch_create_workspace();
+
+/**
+ * Destroy an instance of Moré & Thuente line search.
+ *
+ * This function should only be called on an instance created by @link
+ * #opl_csrch_create_workspace.
+ *
+ * @param ws    A line search instance created by @link
+ *              #opl_csrch_create_workspace.
+ */
+extern void opl_csrch_destroy_workspace(opl_csrch_workspace_t* ws);
 
 /**
  * Initiate a line search by Moré & Thuente method.
+ *
+ * @param ws     The address of the line search workspace.
+ *
+ * @param f      The value of the function at the start of the line search
+ *               (that is for `stp = 0`).
+ *
+ * @param g      The value of the directional derivative at the start of the
+ *               line search (that is for `stp = 0`).
+ *
+ * @param stp    The length of the first step to take along the search
+ *               direction.  Must be a strictly positive value.
+ *
+ * @param ftol   A nonnegative tolerance for the sufficient decrease condition.
+ *               One should take `0 < ftol < 1/2`.
+ *
+ * @param gtol   A nonnegative tolerance for the curvature condition.  One
+ *               should take `ftol < gtol < 1`.
+ *
+ * @param xtol   A nonnegative relative tolerance for an acceptable step.
+ *               The line search will exit with a warning if the relative
+ *               difference between `sty` and `stx` is less than `xtol`.
+ *
+ * @param stpmin A nonnegative lower bound for the step.
+ *
+ * @param stpmax A nonnegative upper bound for the step.
+ *
+ * @return A standard status: `OPL_SUCCESS` or any other value to indicate the
+ *         error.
  */
 extern opl_status_t
 opl_csrch_start(opl_csrch_workspace_t* ws, double f, double g, double stp,
@@ -277,186 +463,123 @@ opl_csrch_start(opl_csrch_workspace_t* ws, double f, double g, double stp,
 
 /**
  * Iterate a line search by Moré & Thuente method.
+ *
+ * Upon return, @link #opl_csrch_get_task, @link #opl_csrch_get_status or @link
+ * #opl_csrch_get_reason can be used to retrieve the next pending task, the
+ * status of the last operation and the reason of the result of the las
+ * operation.
+ *
+ * @param ws     The address of the line search workspace.
+ *
+ * @param f      The value of the function for the current step along the line
+ *               search.
+ *
+ * @param g      The value of the derivative of the function for the current
+ *               step along the line search.
+ *
+ * @param stp    The address of the variable with, on entry, the length of the
+ *               current step taken along the search direction.  On exit with
+ *               task `OPL_TASK_FG`, the variable will be set with the next
+ *               step to take.  On exit with task `OPL_TASK_CONV`, the variable
+ *               is left unchanged.
+ *
+ * @return The following status values can be returned:
+ *
+ * - `OPL_SUCCESS`, then the task returned by @link #opl_csrch_get_task
+ *   indicates the required action.  If `task = OPL_TASK_FG`, then the callar
+ *   shall evaluate the function and derivative at `*stp` and call
+ *   `opl_csrch_iterate` again.  If `task = OPL_TASK_CONV`, then the search is
+ *   successful.  If `task = OPL_TASK_WARN` then the subroutine is not able to
+ *   satisfy the convergence conditions. The exit value of `*stp` contains the
+ *   best point found during the search.  If `task = OPL_TASK_ERROR` then there
+ *   is an error in the input arguments.
+ *
+ * - `OPL_STP_EQ_STPMIN` with `task = OPL_TASK_WARN`: the search is blocked at
+ *   the lower bound.
+ *
+ * - `OPL_STP_EQ_STPMAX` with `task = OPL_TASK_WARN`: the search is blocked at
+ *   the upper bound.
+ *
+ * - `OPL_XTOL_TEST_SATISFIED` with `task = OPL_TASK_WARN`: `XTOL` test is
+ *   satisfied.
+ *
+ * - `OPL_TASK_WARN` with `task = OPL_TASK_WARN`: rounding errors prevent
+ *   progress.
+ *
+ * - `OPL_OUT_OF_BOUNDS` with `task = OPL_TASK_ERROR`: the step `*stp` is
+ *   outside bracket `(stx,sty)`.
+ *
+ * - `OPL_NOT_A_DESCENT` with `task = OPL_TASK_ERROR`: the descent condition
+ *   does not hold.
+ *
+ * - `OPL_STPMAX_LT_STPMIN` with `task = OPL_TASK_ERROR`: the search bounds are
+ *   incompatible.
  */
 extern opl_status_t
-opl_csrch_iterate(opl_csrch_workspace_t* ws, double f, double g, double *stp_ptr);
-
-
-/*
- * DESCRIPTION:
- *   This subroutine finds a step that satisfies a sufficient decrease
- *   condition and a curvature condition.
- *
- *   Each call of the subroutine updates an interval with endpoints STX and
- *   STY. The interval is initially chosen so that it contains a minimizer of
- *   the modified function:
- *
- *       psi(stp) = f(stp) - f(0) - ftol*stp*g(0)
- *
- *   where g(0) = f'(0).  If psi(stp) <= 0 and g(stp) >= 0 for some step, then
- *   the interval is chosen so that it contains a minimizer of f.  The
- *   algorithm is designed to find a step that satisfies the sufficient
- *   decrease condition:
- *
- *     f(stp) <= f(0) + ftol*stp*g(0),                            (1)
- *
- *   and the curvature condition:
- *
- *     abs(g(stp)) <= gtol*abs(g(0)).                             (2)
- *
- *   Relations (1) and (2) are called the strong Wolfe conditions.  If FTOL is
- *   less than GTOL and if, for example, the function is bounded below, then
- *   there is always a step which satisfies both conditions.  If no step can be
- *   found that satisfies both conditions, then the algorithm stops with a
- *   warning.  In this case STP only satisfies the sufficient decrease
- *   condition.
- *
- *
- * ARGUMENTS:
- *   (Note: the user must not alter TASK and work arrays ISAVE and DSAVE
- *   between calls.)
- *
- *   F is a double precision variable.  On initial entry, F is the value of the
- *     function at 0.  On subsequent entries, F is the value of the function at
- *     STP.  On exit, F is left unchanged.
- *
- *   G is a double precision variable.  On initial entry, G is the derivative
- *     of the function at 0.  On subsequent entries, G is the derivative of the
- *     function at STP.  On exit, G is left unchanged.
- *
- *   STP is a double precision variable.  On entry, STP is the current estimate
- *     of a satisfactory step.  On initial entry, a positive initial estimate
- *     must be provided.  On exit with TASK = OPL_TASK_FG, STP is the new
- *     estimate of a satisfactory step.  On exit with TASK = OPL_TASK_CONV, STP
- *     is left unchanged and satisfies the sufficient decrease and curvature
- *     condition.  On exit with TASK not equal to OPL_TASK_CONV, STP is left
- *     unchanged.
- *
- *   FTOL is a double precision variable.  On entry, FTOL specifies a
- *     nonnegative tolerance for the sufficient decrease condition.  On exit,
- *     FTOL is unchanged.  You should take 0 < FTOL < 0.5
- *
- *   GTOL is a double precision variable.  On entry, GTOL specifies a
- *     nonnegative tolerance for the curvature condition.  On exit, GTOL is
- *     unchanged.  You should take FTOL < GTOL < 1.
- *
- *   XTOL is a double precision variable.  On entry, XTOL specifies a
- *     nonnegative relative tolerance for an acceptable step.  The subroutine
- *     exits with a warning if the relative difference between STY and STX is
- *     less than XTOL.  On exit, XTOL is unchanged.
- *
- *   STPMIN is a double precision variable.  On entry, STPMIN is a nonnegative
- *     lower bound for the step.  On exit, STPMIN is unchanged.
- *
- *   STPMAX is a double precision variable.  On entry, STPMAX is a nonnegative
- *     upper bound for the step.  On exit, STPMAX is unchanged.
- *
- *   TASK is an integer variable.  On initial entry, task must be set to
- *     OPL_TASK_START.  On exit, TASK indicates the required action:
- *
- *       If TASK = OPL_TASK_FG then evaluate the function and derivative at STP
- *         and call opl_dcsrch again.
- *
- *       If TASK = OPL_TASK_CONV then the search is successful.
- *
- *       If TASK = OPL_TASK_WARN then the subroutine is not able to satisfy the
- *         convergence conditions. The exit value of stp contains the best
- *         point found during the search.
- *
- *       If TASK = OPL_TASK_ERROR then there is an error in the input
- *         arguments.
- *
- *     On exit with convergence, a warning or an error, the array CSAVE
- *     contains additional information (unless it was NULL).
- *
- *   CSAVE is a character work array of, at least, OPL_MSG_SIZE elements which
- *     is used to store a message corresponding to the value of TASK.
- *
- *   ISAVE is an integer work array of, at least, 2 elements.
- *
- *   DSAVE is a double precision work array of, at least, 12 elements.
- *
- *
- * RETURNED VALUE:
- *   The returned value is less or equal zero to signal an error:
- *
- *      0 if STPMAX < STPMIN
- *     -1 if descent condition violated, i.e. DX*(STP - STX) >= 0
- *     -2 if STP outside bracket (STX,STY)
- *     -3 if STPMIN < 0
- *     -4 if XTOL < 0
- *     -5 if FTOL <= 0
- *     -6 if GTOL <= 0
- *     -7 if initial G >= 0
- *     -8 if STP > STPMAX
- *     -9 if STP < STPMIN
- *
- *   The returned value is greater or equal  3 to indicate that the line search
- *   cannot converge (warning):
- *
- *      3 if STP = STPMIN
- *      4 if STP = STPMAX
- *      5 if XTOL test satisfied
- *      6 if rounding errors prevent progress
- *
- *   Otherwise (normal return), the returned value is:
- *
- *      1 if caller must evaluate (i.e. TASK = OPL_TASK_FG)
- *      2 if line search has convergenced (i.e. TASK = OPL_TASK_CONV)
- *
- *
- * EXEMPLE:
- *   A typical invocation of opl_csrch has the following outline:
- *
- *     task = OPL_TASK_START;
- *     f = ...;   // function value for STP=0
- *     g = ...;   // derivative value for STP=0
- *     stp = ...; // guess for next STP value to try (STP > 0.0)
- *     for (;;) {
- *       opl_csrch(f, g, &stp, ftol, gtol, xtol, stpmin, stpmax, &task,
- *     	           csave, isave, dsave);
- *       if (task == OPL_TASK_FG) {
- *         // Evaluate the function and the gradient at STP.
- *         f = func(STP);
- *         g = grad(STP);
- *       } else if (task == OPL_TASK_CONV) {
- *         // Search has converged.
- *         break;
- *       } else if (task == OPL_TASK_WARN) {
- *         // Some problem prevents further progress.
- *         fprintf(stderr, "warning in %s\n", csave);
- *         exit(1);
- *       } else {
- *         // An error occured.
- *         fprintf(stderr, "error in %s\n", csave);
- *         exit(1);
- *       }
- *     }
- *
- *
- * REFERENCES:
- *   [1] Jorge J. Moré and David J. Thuente, "Line search algorithms with
- *       guaranteed sufficient decrease" in ACM Transactions on Mathematical
- *       Software (TOMS) Volume 20, Issue 3, Pages 286-307 (September 1994).
- *
- *
- * HISTORY:
- *   MINPACK-1 Project. June 1983.
- *   Argonne National Laboratory.
- *   Jorge J. Moré and David J. Thuente.
- *
- *   MINPACK-2 Project. November 1993.
- *   Argonne National Laboratory and University of Minnesota.
- *   Brett M. Averick, Richard G. Carter, and Jorge J. Moré.
- *
- *   Yorick translation an improvements.  October 2001.
- *   C-version.  February 2003.
- *   Observatoire de Lyon (France).
- *   Eric Thiébaut.
- */
+opl_csrch_iterate(opl_csrch_workspace_t* ws, double f, double g,
+                  double *stp);
 
 /**
  * Compute a safeguarded cubic step.
+ *
+ * This function computes a safeguarded step for a search procedure and updates
+ * an interval that contains a step that satisfies a sufficient decrease and a
+ * curvature condition [1].
+ *
+ * The parameter `stx` contains the step with the least function value.  If
+ * `brackt` is set to true (i.e.  non-zero) then a minimizer has been bracketed
+ * in an interval with endpoints `stx` and `sty`.  The parameter `stp` contains
+ * the current step.  The subroutine assumes that if `brackt` is true then:
+ *
+ * <pre>
+ *     min(stx,sty) < stp < max(stx,sty),
+ * </pre>
+ *
+ * and that the derivative at `stx` is negative in the direction of the step.
+ *
+ * On output, all the parameters passed by address are updated appropriately.
+ *
+ * @param ctx      The address of a context structure for error reporting.
+ *
+ * @param brackt_ptr The addresses where the value of `brackt` is stored.
+ *                  `brackt` is a logical variable.  On entry, `brackt`
+ *                  specifies if a minimizer has been bracketed.  Initially
+ *                  `brackt` must be set to false.  On exit, `brackt` specifies
+ *                  if a minimizer has been bracketed.  When a minimizer is
+ *                  bracketed, `brackt` (i.e. the value at address
+ *                  `brackt_ptr`) is set to true.
+ *
+ * @param stpmin    The lower bound for the step.
+ *
+ * @param stpmax    The upper bound for the step.
+ *
+ * @param stx_ptr   The address of `stx`, the best step obtained so far.
+ *
+ * @param fx_ptr    The address of `fx`, the function at `stx`.
+ *
+ * @param dx_ptr    The addresses of `dx`, the derivative at `stx` negative in
+ *                  the direction of the step, that is, `dx` and `stp - stx`
+ *                  must have opposite signs.
+ *
+ * @param sty_ptr   The address of `sty`, the other endpoint of the interval
+ *                  of uncertainty.
+ *
+ * @param fy_ptr    The address of `fy`, the function at `sty`.
+ *
+ * @param dy_ptr    The address of `dy`, the derivative at `sty`.
+ *
+ * @param stp_ptr   The address where the value of `stp`, the current step,
+ *                  is stored.  If `brackt` is set true then on input `stp`
+ *                  must be between `stx` and `sty`.  On output, the value at
+ *                  `stp_ptr` is set to the new step.
+ *
+ * @param fp        The function at the current step.
+ *
+ * @param dp        The derivative at the current step.
+ *
+ * @return The returned value indicates whether the operation was successful
+ *         (failure can only occur with wrong arguments).  The context `ctx` is
+ *         used to report errors if any.
  */
 extern opl_status_t
 opl_cstep(opl_context_t* ctx, opl_boolean_t *brackt,
@@ -464,91 +587,19 @@ opl_cstep(opl_context_t* ctx, opl_boolean_t *brackt,
           double *stx_ptr, double *fx_ptr, double *dx_ptr,
           double *sty_ptr, double *fy_ptr, double *dy_ptr,
           double *stp_ptr, double  fp,     double  dp);
-/*
- * DESCRIPTION:
- *
- *   These functions compute a safeguarded step for a search procedure and
- *   updates an interval that contains a step that satisfies a sufficient
- *   decrease and a curvature condition [1].
- *
- *   The parameter STX contains the step with the least function value.  If
- *   BRACKT is set to true (i.e.  non-zero) then a minimizer has been bracketed
- *   in an interval with endpoints STX and STY.  The parameter STP contains the
- *   current step.  The subroutine assumes that if BRACKT is true then:
- *
- *     min(STX,STY) < STP < max(STX,STY),
- *
- *   and that the derivative at STX is negative in the direction of the step.
- *
- *
- * ARGUMENTS:
- *
- *   STX_PTR, FX_PTR and DX_PTR are the addresses where the values of STX, FX
- *     and DX are stored.  STX, FX, and DX specify the step, the function, and
- *     the derivative at the best step obtained so far.  The derivative must be
- *     negative in the direction of the step, that is, DX and STP-STX must have
- *     opposite signs.  On output these parameters are updated appropriately.
- *
- *   STY_PTR, FY_PTR and DY_PTR are the addresses where the values of STY, FY
- *     and DY are stored.  STY, FY, and DY specify the step, the function, and
- *     the derivative at the other endpoint of the interval of uncertainty.  On
- *     output these parameters are updated appropriately.
- *
- *   STP_PTR is the addresses  where the value of STP is  stored.  STP, FP, and
- *     DP specify  the step, the  function, and  the derivative at  the current
- *     step.  If BRACKT is  set true then on input STP must  be between STX and
- *     STY.  On output  STP (i.e. the value  at address STP_PTR) is  set to the
- *     new step.
- *
- *   BRACKT_PTR is the addresses where the value of BRACKT is stored.  BRACKT
- *     is a logical variable.  On entry, BRACKT specifies if a minimizer has
- *     been bracketed.  Initially BRACKT must be set to false (i.e zero).  On
- *     exit, BRACKT specifies if a minimizer has been bracketed.  When a
- *     minimizer is bracketed, BRACKT (i.e. the value at address BRACKT_PTR) is
- *     set to true (i.e. non-zero).
- *
- *   STPMIN and STPMAX specify lower and upper bounds for the step.
- *
- *   ERRMSG is a character buffer with at least OPL_MSG_SIZE bytes (or NULL to
- *     have no error message) used to store an error message if the routine
- *     returns OPL_ERROR.
- *
- *
- * RETURNED VALUE:
- *   The returned value is less or equal zero to signal an error:
- *
- *      0 if STPMAX < STPMIN
- *     -1 if descent condition violated, i.e. DX*(STP - STX) >= 0
- *     -2 if STP outside bracket (STX,STY)
- *
- *   otherwise (no error) the returned value is 1, 2, 3 or 4 to indicate which
- *   how the new step was guessed (see the code and ref.  [1] for details).
- *
- *
- * REFERENCES:
- *   [1] Jorge J.  Moré and David J.  Thuente, "Line search algorithms with
- *       guaranteed sufficient decrease" in ACM Transactions on Mathematical
- *       Software (TOMS) Volume 20, Issue 3, Pages 286-307 (September 1994).
- *
- *
- * HISTORY:
- *   MINPACK-1 Project. June 1983
- *   Argonne National Laboratory.
- *   Jorge J. Moré and David J. Thuente.
- *
- *   MINPACK-2 Project. November 1993.
- *   Argonne National Laboratory and University of Minnesota.
- *   Brett M. Averick and Jorge J. Moré.
- *
- *   Yorick translation an improvements.  October 2001.
- *   C-version.  February 2003.
- *   Observatoire de Lyon (France).
- *   Eric Thiébaut.
+/**
+ * @}
  */
 
 /*---------------------------------------------------------------------------*/
-/* VMLMB - limited memory variable metric method (BFGS)
-           with/without bound constraints */
+
+/**
+ * @addtogroup VMLMB
+ * @{
+ *
+ * VMLMB is a limited memory variable metric method (BFGS) which can take into
+ * account bound constraints
+ */
 
 /**
  * The opaque workspace for VMLMB.
@@ -613,7 +664,6 @@ opl_vmlmb_create(opl_integer_t n, opl_integer_t m);
 
 extern void
 opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
-
 
 /*
  * VMLM-B computes a local minimizer of a function of N variables by a limited
@@ -906,6 +956,10 @@ extern opl_integer_t opl_vmlmb_get_iterations(opl_vmlmb_workspace_t* ws);
 extern opl_integer_t opl_vmlmb_get_restarts(opl_vmlmb_workspace_t* ws);
 /*	Query values of current step size along search direction, curent
 	iteration number. */
+
+/**
+ * @}
+ */
 
 /*---------------------------------------------------------------------------*/
 /* APPLY BOUND CONSTRAINTS */
