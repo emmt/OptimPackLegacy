@@ -1,7 +1,7 @@
 #
 # Makefile --
 #
-# Makefile for OptimPack.
+# Makefile for OptimPackLegacy.
 #
 #------------------------------------------------------------------------------
 #
@@ -32,10 +32,12 @@ VERSION = `sed < VERSION -e 's/ //g'`
 SUBDIRS = yorick idl src
 
 DISTRIB_SRC = $(srcdir)
-DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md optimpack.bib
+DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md \
+    optimpack.bib
 
 CODE_SRC = $(srcdir)/src
-CODE_FILES = op_limits.h op_lnsrch.c optimpack.h op_utils.c op_vmlmb.c
+CODE_FILES = opl_algebra.c opl_lnsrch.c opl_vmlmb.c opl_utils.c \
+     opl_limits.h  opl_private.h optimpacklegacy.h
 
 IDL_SRC = $(srcdir)/idl
 IDL_FILES = \
@@ -57,7 +59,8 @@ IDL_CONTRIB_SRC = $(srcdir)/idl/contrib
 IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
 
 YORICK_SRC = $(srcdir)/yorick
-YORICK_FILES = Makefile OptimPack1.i OptimPack1-test.i OptimPack1-test.out
+YORICK_FILES = Makefile opl_yorick.c optimpacklegacy.i \
+    optimpacklegacy-tests.i optimpacklegacy-tests.out
 
 all:
 	@echo "No default target"
@@ -68,7 +71,7 @@ distrib:
 	  echo >&2 "bad VERSION"; \
 	  return 1; \
 	fi; \
-	pkgdir=OptimPack-$$version; \
+	pkgdir=OptimPackLegacy-$$version; \
 	archive=$$pkgdir.tar.bz2; \
 	if test -e "$$pkgdir"; then \
 	  echo >&2 "error: $$pkgdir already exists"; \

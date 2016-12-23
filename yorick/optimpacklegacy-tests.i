@@ -1,14 +1,14 @@
 /*
- * OptimPack1-test.i --
+ * optimpacklegacy-tests.i --
  *
  * Various tests from MINPACK suite for the optimization routines in
- * OptimPack extension for Yorick.
+ * OptimPackLegacy extension for Yorick.
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
- *
  * This file is part of OptimPack <https://github.com/emmt/OptimPackLegacy>.
+ *
+ * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
  *
  * OptimPack is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free
@@ -28,11 +28,11 @@
  *-----------------------------------------------------------------------------
  */
 
-require, "OptimPack1.i";
+require, "optimpacklegacy.i";
 
 #if 0
-#include "OptimPack1-test.i"
-for (i=1;i<=18;++i) op_test_um, prob=i, method=0, verb=1, output="OptimPack1-test.out";
+#include "optimpacklegacy-tests.i"
+opl_runtests, "optimpacklegacy-tests.out.new";
 
 // Since the CPU time may change, you can compare the outputs
 // with:
@@ -40,24 +40,30 @@ for (i=1;i<=18;++i) op_test_um, prob=i, method=0, verb=1, output="OptimPack1-tes
 //
 #endif
 
-
-local op_rosenbrock_nevals;
-op_rosenbrock_nevals=0;
-
-func op_test_rosenbrock(nil, start=, method=, ndirs=, frtol=)
-/* DOCUMENT op_test_rosenbrock, ...;
-     Test op_driver with Rosenbrock function.
-
-   SEE ALSO: op_test_rosenbrock_func. */
+func opl_runtests(output)
 {
-  x = is_void(start) ? [0.0, 0.0] : start;
-  return op_driver(op_test_rosenbrock_func,
-                   (is_void(start) ? [0.0, 0.0] : start),
-                   method=method, fmin=0.0, verb=1, ndirs=ndirs,
-                   frtol=frtol);
+  for (i = 1; i <= 18; ++i) {
+    opl_test_um, prob=i, method=0, verb=1, output=output;
+  }
 }
 
-func op_test_rosenbrock_func(x, &g)
+local opl_rosenbrock_nevals;
+opl_rosenbrock_nevals=0;
+
+func opl_test_rosenbrock(nil, start=, method=, ndirs=, frtol=)
+/* DOCUMENT opl_test_rosenbrock, ...;
+     Test opl_driver with Rosenbrock function.
+
+   SEE ALSO: opl_test_rosenbrock_func. */
+{
+  x = is_void(start) ? [0.0, 0.0] : start;
+  return opl_driver(opl_test_rosenbrock_func,
+                    (is_void(start) ? [0.0, 0.0] : start),
+                    method=method, fmin=0.0, verb=1, ndirs=ndirs,
+                    frtol=frtol);
+}
+
+func opl_test_rosenbrock_func(x, &g)
 {
   // Rosenbrock:
   //    f  = 100*(x2 - x1^2)^2 + (1 - x1)^2
@@ -66,11 +72,11 @@ func op_test_rosenbrock_func(x, &g)
   v = 1.0 - x1;
   f = 100.0*u*u + v*v;
   g = [-400.0*u*x1 - 2.0*v, 200.0*u];
-  ++op_rosenbrock_nevals;
+  ++opl_rosenbrock_nevals;
   return f;
 }
 
-func op_test_quad(x, &g)
+func opl_test_quad(x, &g)
 {
   u = (x - [1.0, 1.0, 1.0]);
   w = [3.0, 7.0, 2.0];
@@ -78,11 +84,11 @@ func op_test_quad(x, &g)
   return sum(w*u*u);
 }
 
-func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
+func opl_test_um(prob=, n=, method=, ndir=, verb=, factor=,
                 maxiter=, maxeval=, frtol=, fatol=,
                 sftol=, sgtol=, sxtol=,
                 output=)
-/* DOCUMENT op_test_um(...)
+/* DOCUMENT opl_test_um(...)
      Check various optimization methods for eighteen nonlinear unconstrained
      minimization problems.
 
@@ -189,53 +195,39 @@ func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
   dims = dimsof(x);
 
   /* Choose minimization method. */
-  //if (is_void(frtol)) frtol = 1e-10;
-  //if (is_void(fatol)) fatol = 1e-10;
-  if (is_void(method)) method = 0;
-  if (method == 0) {
+  if (! method) {
     /* Variable metric. */
+    method = 0;
     if (is_void(ndir)) ndir = n;
     method_name = swrite(format="Limited Memory BFGS (VMLM with NDIR=%d)",
                          ndir);
-    ws = op_vmlmb_setup(n, ndir, fmin=0.0,
-                        fatol=fatol, frtol=frtol,
-                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
-  } else if (method < 0) {
-    if (is_void(ndir)) ndir = n;
-    method_name = swrite(format="Limited Memory BFGS (LBFGS with NDIR=%d)",
-                         ndir);
-    ws = op_lbfgs_setup(n, ndir);
-  } else if (method >= 1 && method <= 15) {
-    /* Conjugate gradient. */
-    ndir = 2;
-    method_name = swrite(format="Conjugate Gradient (%s)",
-                         ["Fletcher-Reeves", "Polak-Ribiere",
-                          "Polak-Ribiere with non-negative BETA"](method&3));
-    ws = optim_cgmn_setup(method, fmin=fmin, fatol=fatol, frtol=frtol);
+    ws = opl_vmlmb_create(dimsof(x), ndir, fmin=0.0,
+                          fatol=fatol, frtol=frtol,
+                          sftol=sftol, sgtol=sgtol, sxtol=sxtol);
   } else {
     error, "bad METHOD";
   }
   step = 0.0;
-  task = 1;
   eval = iter = 0;
   elapsed = array(double, 3);
   timer, elapsed;
   cpu_start = elapsed(1);
+  task = ws.task;
   for (;;) {
-    if (task == 1) {
-      /* Evaluate function. */
+    if (task == OPL_TASK_FG) {
+      /* Evaluate function and gradient. */
       f = minpack1_umobj(x, prob);
       g = minpack1_umgrd(x, prob);
       ++eval;
     }
 
     /* Check for convergence. */
-    if (task != 1 || eval == 1) {
+    if (task >= OPL_TASK_NEWX) {
       too_many_eval = (maxeval >= 1 && eval > maxeval);
       too_many_iter = (maxiter >= 1 && iter > maxiter);
       timer, elapsed;
       cpu = elapsed(1) - cpu_start;
-      gnorm = sqrt(sum(g*g));
+      gnorm = ws.gnorm; // sqrt(sum(g*g));
       if (verb) {
         if (eval == 1) {
           write, output, format="#\n# Problem %d (N=%d): %s\n",
@@ -251,47 +243,31 @@ func op_test_um(prob=, n=, method=, ndir=, verb=, factor=,
       }
       if (! am_subroutine()) grow, result, [[iter, eval, 1e3*cpu, f,
                                              gnorm, step]];
-      if (task > 2) {
-        msg = op_vmlmb_msg(ws);
+      if (task >= OPL_TASK_CONV) {
+        msg = ws.reason;
         break;
       }
-      if (maxiter >= 0 && iter > maxiter && task == 2) {
-        msg = swrite(format="warning: too many iterations (%d)\n",
-                     iter);
+      if (maxiter >= 0 && iter > maxiter) {
+        task = OPL_TASK_WARN;
+        msg = swrite(format="warning: too many iterations (%d)\n", iter);
         break;
       }
       if (maxeval >= 0 && eval > maxeval) {
-        x = x0;
+        task = OPL_TASK_WARN;
         msg = swrite(format="warning: too many function evaluation (%d)\n",
                      eval);
         break;
       }
     }
 
-
     /* Call optimizer. */
-    if (! method) {
-      task = op_vmlmb_next(x, f, g, ws);
-      iter = (*ws(2))(7);
-      step = (*ws(3))(22);
-    } else if (method < 0) {
-      task = op_lbfgs_next(x, f, g, ws);
-      if (task == 2 || task == 3) ++iter;
-      step = -1.0;
-    } else {
-      optim_cgmn, x, f, g, task, ws;
-      iter = optim_cgmn_iter(ws);
-      step = optim_cgmn_step(ws);
-    }
+    task = opl_vmlmb_iterate(ws, x, f, g);
+    iter = ws.iterations;
+    step = ws.step;
   }
 
-  if (task == 3) status = 0;
-  else if (ident == 4) status = 1;
-  else status = 2;
   write, output, format=(verb?"# %s\n#\n":"*** %s\n"), msg;
   return result;
-  //return [status, n, ndir, method, iter, eval, cpu, f];
-  //return x;
 }
 
 /*---------------------------------------------------------------------------*/

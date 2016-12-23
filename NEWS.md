@@ -1,9 +1,25 @@
+* VMLMB workspace is now a single opaque handle.  All needed data can be saved
+  in a single block of memory (*monolithic* workspace) provided by the caller
+  or allocated by the library (and possibly split in small blocks).  This
+  simplifies the use of VMLMB both in C and in other programming languages
+  and add flexibility for very large problems.
+
+* In case of early stopping (i.e., during a line search), it is now posible to
+  restore the variables at the start of the line search.  This is expected to
+  be nearly the best ones so far.
+
+* Rewrite VMLMB code for better readability, to remove unecessary variables and
+  avoid unecessary computations.  This also fixes some inconsistencies.  Opaque
+  structures are now used instead of arrays of values, hopefully not to the
+  detriment of portability.
+
+
 **Version 1.3.3 (2016-12-13)**
 
 * Parameter `delta > 0` is used to specify a relative small step size.
 
 * Parameter `epsilon ≥ 0` is used to check for the sufficient descent
-  condition.
+  condition.  Seems to speed up convergence in many cases.
 
 * In Yorick interface:
 

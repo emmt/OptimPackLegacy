@@ -1,6 +1,6 @@
 function op_vmlmb_setup, n, m, fmin=fmin, frtol=frtol, fatol=fatol, $
                          sftol=sftol, sgtol=sgtol, sxtol=sxtol, $
-                         epsilon=epsilon, costheta=costheta
+                         epsilon=epsilon, delta=delta
 ;+
 ; NAME:
 ;   op_vmlmb_setup
@@ -80,46 +80,44 @@ function op_vmlmb_setup, n, m, fmin=fmin, frtol=frtol, fatol=fatol, $
 ;
 ; MODIFICATION HISTORY:
 ;   2003, Eric THIEBAUT.
-;   $Id: op_vmlmb_setup.pro,v 1.1 2008/02/07 11:01:34 eric Exp eric $
-;   $Log: op_vmlmb_setup.pro,v $
-;   Revision 1.1  2008/02/07 11:01:34  eric
 ;   Initial revision
+;
+;   2016, Eric THIEBAUT.
+;   Update to OptimPackLegacy 1.4
 ;-
   common op_common, libname
   on_error, 2
 
   ;; Provides default values for parameters:
-  if not n_elements(m)        then m = 5L
+  if not n_elements(m)        then m = (5L < n)
   if not n_elements(fmin)     then fmin = 0.0D0
   if not n_elements(frtol)    then frtol = 1.0D-10
   if not n_elements(fatol)    then fatol = 1.0D-13
   if not n_elements(sftol)    then sftol = 1.0D-3
   if not n_elements(sgtol)    then sgtol = 9.0D-1
   if not n_elements(sxtol)    then sxtol = 1.0D-1
-  if not n_elements(epsilon)  then epsilon = 1.0D-8
-  if not n_elements(costheta) then costheta = 1.0D-2
+  if not n_elements(epsilon)  then epsilon = 0.0D0
+  if not n_elements(delta)    then delta = 1.0D-2
 
   ;; Create workspace array (round the number of needed bytes up to the
   ;; size of a double)
-  double_size = 8L              ; assume 8 bytes per double
-  long_size = 4L                ; assume 4 bytes per long
-  nbytes = 128L + long_size*10L + double_size*(26L + n + 2L*m*(n + 1L))
+  nbytes = call_external(libname, 'op_idl_vmlmb_size', $
+                         size(n), n, size(m), m)
   ndoubles = ((nbytes + double_size - 1L)/double_size)
   ws = dblarr(ndoubles, /nozero)
 
-  ;; Pack floating point scalar arguments into workspace vector (this
-  ;; should clash if the argument are not scalars):
-  ws(0:0) = fmin
-  ws(1:1) = frtol
-  ws(2:2) = fatol
-  ws(3:3) = sftol
-  ws(4:4) = sgtol
-  ws(5:5) = sxtol
-  ws(6:6) = epsilon
-  ws(7:7) = costheta
-
-  task = call_external(libname, 'op_idl_vmlmb_first', $
-                       size(n), n, size(m), m, size(ws), ws)
+  ;; Instanciate workspace array.
+  task = call_external(libname, 'op_idl_vmlmb_init', $
+                       size(ws),      ws,      $
+                       size(n),       n,       $
+                       size(m),       m,       $
+                       size(fatol),   fatol,   $
+                       size(frtol),   frtol,   $
+                       size(delta),   delta,   $
+                       size(epsilon), epsilon, $
+                       size(sftol),   sftol,   $
+                       size(sgtol),   sgtol,   $
+                       size(sxtol),   sxtol)
   if task ne 1L then begin
     if task lt 0L then msg = op_last_error() else msg = op_vmlmb_msg(ws)
     message, msg

@@ -17,7 +17,7 @@ optimization routines get saved into workspace arrays provided by the caller
 and the optimization routines never explicitely call the penalty function to
 optimize.
 
-Most of the documention is in the header file [optimpack.h](src/optimpack.h).
+Most of the documention is in the header file [optimpacklegacy.h](src/optimpacklegacy.h).
 
 Directory [idl](idl) contains an implementation of OptimPack support in IDL
 (using CALL_EXTERNAL).
@@ -53,8 +53,8 @@ To install the library (not needed for IDL nor for IDL):
 
    which will copy:
 
-        liboptimpack.a into /usr/local/lib
-        optimpack.h    into /usr/local/include
+        liboptimpacklegacy.a into /usr/local/lib
+        optimpacklegacy.h    into /usr/local/include
 
    and creates directory `/usr/local/doc/OptimPack-${VERSION}` with some
    documentation and legal stuff.
@@ -87,8 +87,8 @@ you may have to set the values of the following macros:
     OP_INTEGER = data type used to store array indices
     OP_LOGICAL = data type of the result of a logical test
 
-This must be  done *before* `optimpack.h` get included.   If these macros
-are not defined, the default assumed in `optimpack.h` is:
+This must be  done *before* `optimpacklegacy.h` get included.   If these macros
+are not defined, the default assumed in `optimpacklegacy.h` is:
 
     OP_INTEGER = int
     OP_LOGICAL = int
@@ -97,7 +97,7 @@ For instance, one should write:
 
     #define OP_INTEGER long
     #define OP_LOGICAL int
-    #include "optimpack.h"
+    #include "optimpacklegacy.h"
     ...
 
 Of course, the installed OptimPack library must have been compiled with the
@@ -106,9 +106,9 @@ CPP (the C preprocessor) e.g. in Makefile:
 
      CPPFLAGS = -DOP_INTEGER=long -DOP_LOGICAL=int -I.
 
-a final possibility is to edit `optimpack.h` and to adjust the default values
-of these macros (at the very beginning of this file).  If you plan to install
-in your system, the best is probably to fix the definitions in `optimpack.h`,
-then compile the library and finally install the library and the header file
-`optimpack.h` in proper system directories (*e.g.* with `make install
-PREFIX=...`).
+a final possibility is to edit `optimpacklegacy.h` and to adjust the default
+values of these macros (at the very beginning of this file).  If you plan to
+install in your system, the best is probably to fix the definitions in
+`optimpacklegacy.h`, then compile the library and finally install the library
+and the header file `optimpacklegacy.h` in proper system directories (*e.g.*
+with `make install PREFIX=...`).
