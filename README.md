@@ -39,6 +39,7 @@ Yorick.
 ## Installation
 
 To install the library (not needed for IDL nor for IDL):
+##FIXME: Éric, you might want to check the sentence inside brackets.
 
 1. Edit the file `src/Makefile` (see "Portability Issues" below).
 
