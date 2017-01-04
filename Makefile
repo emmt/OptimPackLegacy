@@ -60,6 +60,7 @@ IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
 
 YORICK_SRC = $(srcdir)/yorick
 YORICK_FILES = Makefile opl_yorick.c optimpacklegacy.i \
+    optimpacklegacy-start.i \
     optimpacklegacy-tests.i optimpacklegacy-tests.out
 
 all:
