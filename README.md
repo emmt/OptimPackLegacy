@@ -22,9 +22,6 @@ Another version of OptimPack is under development and available
 completely different memory management system to be more flexible and allow for
 various kinds of storage (standard memory, distributed memory, GPU, *etc.*).
 
-Directory [idl](idl) contains an implementation of OptimPack support in IDL
-(using CALL_EXTERNAL). **FIXME:** The IDL interface is not yet functional.
-
 Directory [yorick](yorick) contains an implementation of OptimPack support in
 Yorick.
 
