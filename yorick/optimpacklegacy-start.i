@@ -1,3 +1,14 @@
-autoload, "optimpacklegacy.i", opl_vmlmb, opl_vmlmb_create,
-  opl_vmlmb_configure, opl_vmlmb_iterate, opl_vmlmb_restore,
-  opl_vmlmb_restart;
+autoload, "optimpacklegacy.i",
+  opl_vmlmb,
+  opl_vmlmb_configure,
+  opl_vmlmb_create,
+  opl_vmlmb_iterate,
+  opl_vmlmb_restore,
+  opl_vmlmb_restart,
+  OPL_TASK_START,
+  OPL_TASK_FG,
+  OPL_TASK_FREEVARS,
+  OPL_TASK_NEWX,
+  OPL_TASK_CONV,
+  OPL_TASK_WARN,
+  OPL_TASK_ERROR;

@@ -86,7 +86,7 @@ extern opl_vmlmb_create;
 
 
    SEE ALSO opl_vmlmb_configure, opl_vmlmb_iterate, dimsof.
- */
+*/
 
 extern opl_vmlmb_configure;
 /* DOCUMENT opl_vmlmb_configure, ws, key1=val1, key2=val2, ...;
@@ -96,7 +96,7 @@ extern opl_vmlmb_configure;
      called as a function, WS is returned.
 
    SEE ALSO opl_vmlmb_create
- */
+*/
 
 extern opl_vmlmb_iterate;
 /* DOCUMENT task = opl_vmlmb_iterate(ws, x, f, g);
@@ -115,7 +115,7 @@ extern opl_vmlmb_iterate;
      specified, H is an array of double's.
 
    SEE ALSO opl_vmlmb_create, opl_vmlmb_restore.
- */
+*/
 
 extern opl_vmlmb_restore;
 /* DOCUMENT task = opl_vmlmb_restore(ws, x, f, g);
@@ -225,9 +225,8 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
      SFTOL, SGTOL, SXTOL - Line search tolerance and safeguard parameters (see
         opl_csrch).
 
-   SEE ALSO: opl_get_flags, opl_csrch,
-             opl_vmlmb_create, opl_vmlmb_iterate.
- */
+   SEE ALSO: opl_vmlmb_config, opl_vmlmb_create, opl_vmlmb_iterate.
+*/
 {
   /* Largest value of a long integer. */
   LONG_MAX = (1 << (sizeof(long)*8 - 1)) - 1;
