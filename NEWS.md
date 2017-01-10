@@ -1,3 +1,5 @@
+## Version 1.4.0 (2017-01-10)
+
 * VMLMB workspace is now a single opaque handle.  All needed data can be saved
   in a single block of memory (*monolithic* workspace) provided by the caller
   or allocated by the library (and possibly split in small blocks).  This
@@ -13,8 +15,10 @@
   structures are now used instead of arrays of values, hopefully not to the
   detriment of portability.
 
+* IDL port has been temporarily removed (will be back soon).
 
-**Version 1.3.3 (2016-12-13)**
+
+## Version 1.3.3 (2016-12-13)
 
 * Parameter `delta > 0` is used to specify a relative small step size.
 
