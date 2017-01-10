@@ -38,9 +38,12 @@
 
 typedef unsigned char byte_t;
 
-/* Some constants (see
- * http://stackoverflow.com/questions/1923837/how-to-use-nan-and-inf-in-c for a
- * discussion about how to define NaN and infinite).  Alternatives for Inf and NaN:
+/*
+ * Some constants.
+ *
+ * Ssee http://stackoverflow.com/questions/1923837/how-to-use-nan-and-inf-in-c
+ * for a discussion about how to define NaN and infinite.  Alternatives for Inf
+ * and NaN:
  *
  *   double NaN = strtod("NaN", NULL);
  *   double Inf = strtod("Inf", NULL);
@@ -169,7 +172,7 @@ opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value)
     return OPL_ILLEGAL_ADDRESS;
   }
   if (isnan(value) || value < -DBL_MAX) {
-    ws->flags &= (~FLAG_FMIN);
+    ws->flags &= ~FLAG_FMIN;
     ws->fmin = NaN;
   } else {
     ws->fmin = value;
@@ -433,13 +436,13 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
     stpmax = DEFAULT_STPMAX;
 #else
     if (have_fmin) {
-      stpmax = (ws->fmin - ws->f0)/(ws->sgtol*ws->g0d);
+      stpmax = (ws->fmin - ws->f0)/(SGTOL(ws)*ws->g0d);
     } else {
       double temp = fabs(ws->f0);
       if (temp < 1.0) {
 	temp = 1.0;
       }
-      stpmax = temp/(ws->sgtol*ws->g0d);
+      stpmax = temp/(SGTOL(ws)*ws->g0d);
     }
 #endif
     ws->stp = min(ws->stp, stpmax);
