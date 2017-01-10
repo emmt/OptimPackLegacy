@@ -39,25 +39,6 @@ CODE_SRC = $(srcdir)/src
 CODE_FILES = opl_algebra.c opl_lnsrch.c opl_vmlmb.c opl_utils.c \
      opl_limits.h  opl_private.h optimpacklegacy.h
 
-IDL_SRC = $(srcdir)/idl
-IDL_FILES = \
-    Makefile \
-    op_ensure_double.pro \
-    op_ensure_long.pro \
-    op_idl.c \
-    op_idl.h \
-    op_init.pro \
-    op_last_error.pro \
-    op_test.pro \
-    op_vmlmb_msg.pro \
-    op_vmlmb.pro \
-    op_vmlmb_setup.pro \
-    op_wrapper.c \
-    README
-
-IDL_CONTRIB_SRC = $(srcdir)/idl/contrib
-IDL_CONTRIB_FILES = fmin_op.pro Makefile.OptimPack
-
 YORICK_SRC = $(srcdir)/yorick
 YORICK_FILES = Makefile opl_yorick.c optimpacklegacy.i \
     optimpacklegacy-start.i \
@@ -82,24 +63,6 @@ distrib:
 	  echo >&2 "error: $$archive already exists"; \
 	  return 1; \
 	fi; \
-	dstdir=$$pkgdir/idl; \
-	mkdir -p "$$dstdir"; \
-	chmod 755 "$$dstdir"; \
-	for file in $(IDL_FILES); do \
-	  src=$(IDL_SRC)/$$file; \
-	  dst=$$dstdir/$$file; \
-	  cp -p "$$src" "$$dst"; \
-	  chmod 644 "$$dst"; \
-	done; \
-	dstdir=$$pkgdir/idl/contrib; \
-	mkdir -p "$$dstdir"; \
-	chmod 755 "$$dstdir"; \
-	for file in $(IDL_CONTRIB_FILES); do \
-	  src=$(IDL_CONTRIB_SRC)/$$file; \
-	  dst=$$dstdir/$$file; \
-	  cp -p "$$src" "$$dst"; \
-	  chmod 644 "$$dst"; \
-	done; \
 	dstdir=$$pkgdir/yorick; \
 	mkdir -p "$$dstdir"; \
 	chmod 755 "$$dstdir"; \
