@@ -62,7 +62,41 @@ To install the library (not needed for Yorick nor for IDL):
 
 ## Yorick Installation
 
-1. Go to directory `yorick`.
+### Building in any directory
+
+Using the `configure` script in the `yorick` directory of OptimPackLegacy, it
+is possible to build the Yorick plug-in in any directory (not necessarily the
+source directory of the plug-in).
+
+1. Make a new directory, move into that directory and run the `configure`
+   script:
+
+        mkdir -p $BUILD
+        cd $BUILD
+        $SRCDIR/configure
+
+   where `$BUILD` is the name of the directory where to build the plug-in
+   while`$SRCDIR` is the path to `yorick` directory of OptimPackLegacy.
+   The `configure` script has a number of options do:
+
+        $SRCDIR/configure --help
+
+   for a description of the available options.
+
+
+2. Compile the plugin code:
+
+        make clean
+        make
+
+3. Optionaly install plugin in Yorick tree:
+
+        make install
+
+
+### Building in the source directory (not recommended)
+
+1. Go to directory `yorick` of OptimPackLegacy.
 
 2. Setup for compilation and compile the plugin code:
 

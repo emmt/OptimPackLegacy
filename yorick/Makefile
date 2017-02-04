@@ -40,37 +40,37 @@ Y_HOME_PKG=
 # ---------------------------------------------------------- optimization flags
 
 # options for make command line, e.g. `make COPT=-g TGT=exe`
-COPT=$(COPT_DEFAULT)
-TGT=$(DEFAULT_TGT)
+COPT = $(COPT_DEFAULT)
+TGT = $(DEFAULT_TGT)
 
 # ----------------------------------------------------- macros for this package
 
-PKG_NAME=optimpacklegacy
-PKG_I=optimpacklegacy.i
+PKG_NAME = optimpacklegacy
+PKG_I = $(srcdir)/optimpacklegacy.i
 
-OBJS= opl_algebra.o opl_lnsrch.o opl_utils.o opl_vmlmb.o opl_yorick.o
+OBJS = opl_algebra.o opl_lnsrch.o opl_utils.o opl_vmlmb.o opl_yorick.o
 
 # change to give the executable a name other than yorick
-PKG_EXENAME=yorick
+PKG_EXENAME = yorick
 
 # `PKG_DEPLIBS=-Lsomedir -lsomelib` for dependencies of this package
-PKG_DEPLIBS=
+PKG_DEPLIBS =
 # set compiler (or rarely loader) flags specific to this package
-PKG_CFLAGS= -DOPL_INTEGER=long
-PKG_LDFLAGS=
+PKG_CFLAGS = -DOPL_INTEGER=long
+PKG_LDFLAGS =
 
 # list of additional package names you want in PKG_EXENAME
 # (typically Y_EXE_PKGS should be first here)
-EXTRA_PKGS=$(Y_EXE_PKGS)
+EXTRA_PKGS = $(Y_EXE_PKGS)
 
 # list of additional files for clean
-PKG_CLEAN=
+PKG_CLEAN =
 
 # autoload file for this package, if any
-PKG_I_START= optimpacklegacy-start.i
+PKG_I_START = $(srcdir)/optimpacklegacy-start.i
 
 # non-pkg.i include files for this package, if any
-PKG_I_EXTRA=
+PKG_I_EXTRA =
 
 # ------------------------------------- standard targets and rules (in Makepkg)
 
@@ -78,8 +78,8 @@ PKG_I_EXTRA=
 # DLL_TARGETS, LIB_TARGETS, EXE_TARGETS
 # are any additional targets (defined below) prerequisite to
 # the plugin library, archive library, and executable, respectively
-PKG_I_DEPS=$(PKG_I)
-Y_DISTMAKE=distmake
+PKG_I_DEPS = $(PKG_I)
+Y_DISTMAKE = distmake
 
 ifeq (,$(strip $(Y_MAKEDIR)))
 $(info *** WARNING: Y_MAKEDIR not defined, you may run 'yorick -batch make.i' first)
@@ -91,8 +91,8 @@ endif
 
 # override macros Makepkg sets for rules and other macros
 # Y_HOME and Y_SITE in Make.cfg may not be correct (e.g.- relocatable)
-Y_HOME=$(Y_EXE_HOME)
-Y_SITE=$(Y_EXE_SITE)
+Y_HOME = $(Y_EXE_HOME)
+Y_SITE = $(Y_EXE_SITE)
 
 # reduce chance of yorick-1.5 corrupting this Makefile
 MAKE_TEMPLATE = protect-against-1.5
