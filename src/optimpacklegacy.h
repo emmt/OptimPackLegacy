@@ -889,7 +889,7 @@ opl_vmlmb_restore(opl_vmlmb_workspace_t* ws,
  * VMLMB can use a strict lower bound for the objective function to estimate
  * the initial step length for the first iteration or after a restart.  If
  * `fmin` is a NaN value or a value strictly smaller than `-DBL_MAX`, it is
- * assumed that there is no such bound.  VMLMB exits with a warning if a strcit
+ * assumed that there is no such bound.  VMLMB exits with a warning if a strict
  * lower bound is set and `f(x) <= fmin`.
  *
  * @param ws      VMLMB workspace.
