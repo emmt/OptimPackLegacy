@@ -381,7 +381,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       } else if (ws.gnorm <= gtest) {
         stop = 1n;
         msg = swrite(format="convergence (%s)", "gradient small enough");
-      } else if (iter > maxiter) {
+      } else if (iter >= maxiter) {
         stop = 1n;
         msg = swrite(format="too many iterations (%d)", iter);
       }
