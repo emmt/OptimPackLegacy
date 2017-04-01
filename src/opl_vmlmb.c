@@ -41,7 +41,7 @@ typedef unsigned char byte_t;
 /*
  * Some constants.
  *
- * Ssee http://stackoverflow.com/questions/1923837/how-to-use-nan-and-inf-in-c
+ * See http://stackoverflow.com/questions/1923837/how-to-use-nan-and-inf-in-c
  * for a discussion about how to define NaN and infinite.  Alternatives for Inf
  * and NaN:
  *
@@ -324,17 +324,20 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
       return success(ws, OPL_TASK_CONV, "local minimum found");
     }
     if (ws->evaluations > 1) {
-      /* Compute the step and gradient change (i.e., update L-BFGS data).
-         Note: we always compute the effective step (parameter difference) to
-         account for bound constraints and, at least, numerical rounding or
-         truncation errors. */
-      for (Ym = Y(ws->mark), i = 0; i < n; ++i) {
-        Ym[i] -= g[i];
-      }
+      /* Update L-BFGS model. (We always compute the effective step to account
+         for bound constraints and, at least, numerical rounding or truncation
+         errors.) */
+      double fchange, snorm = zero, ynorm = zero;
       for (Sm = S(ws->mark), i = 0; i < n; ++i) {
         Sm[i] -= x[i];
+        snorm += Sm[i]*Sm[i];
+      }
+      for (Ym = Y(ws->mark), i = 0; i < n; ++i) {
+        Ym[i] -= g[i];
+        ynorm += Ym[i]*Ym[i];
       }
       if (isfree == NULL) {
+        /* FIXME: compute GAMMA? */
         ws->rho[ws->mark] = opl_ddot(n, Y(ws->mark), S(ws->mark));
       }
       if (ws->mp < m) {
@@ -342,51 +345,51 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
       }
 
       /* Test for global convergence. */
-      if (opl_noneof(n, S(ws->mark))) {
+      if (snorm <= zero) {
         return success(ws, OPL_TASK_WARN, "no parameter change");
-      } else if (opl_noneof(n, Y(ws->mark))) {
+      }
+      if (ynorm <= zero) {
         return success(ws, OPL_TASK_WARN, "no gradient change");
-      } else {
-        double change = max(fabs(*f - ws->f0), fabs(ws->stp*ws->g0d));
-        if (change <= ws->frtol*fabs(ws->f0)) {
-          return success(ws, OPL_TASK_CONV, "FRTOL test satisfied");
-        } else if (change <= ws->fatol) {
-          return success(ws, OPL_TASK_CONV, "FATOL test satisfied");
-        }
+      }
+      fchange = max(fabs(*f - ws->f0), fabs(ws->stp*ws->g0d));
+      if (fchange <= ws->frtol*fabs(ws->f0)) {
+        return success(ws, OPL_TASK_CONV, "FRTOL test satisfied");
+      }
+      if (fchange <= ws->fatol) {
+        return success(ws, OPL_TASK_CONV, "FATOL test satisfied");
       }
     }
 
     /* Set task to signal a new iterate. */
-    return success(ws, OPL_TASK_NEWX, "new improved solution available for inspection");
+    return success(ws, OPL_TASK_NEWX,
+                   "new improved solution available for inspection");
 
   case OPL_TASK_NEWX:
   case OPL_TASK_CONV:
   case OPL_TASK_WARN:
-    /* Compute a new search direction.  D already contains the (projected) gradient. */
+    /* Compute a new search direction.  D already contains the (projected)
+       gradient. */
     if (ws->mp > 0) {
       /* Apply L-BFGS recursion to compute a search direction. */
       compute_direction(ws, d, isfree, h);
       if (ws->mp > 0) {
         /* Set initial step size and compute dot product of gradient and search
-           direction.  If L-BFGS recursion filed to produce a sufficient
-           descent search direction, we restart the algorithm with steepest
-           descent. */
-        int descent;
+           direction.  If L-BFGS recursion failed to produce a sufficient
+           descent search direction, the algorithm is restarted with the
+           steepest descent. */
         ws->stp = 1.0;
         ws->gd = -opl_ddot(n, g, d);
-        if (ws->epsilon > zero) {
-          descent = (ws->gd <= -ws->epsilon*ws->gnorm*opl_dnrm2(n, d));
-        } else {
-          descent = (ws->gd < zero);
-        }
-        if (! descent) {
-          /* Manage to restart the L-BFGS with steepest descent. */
+        if (ws->epsilon > zero ?
+            (ws->gd > -ws->epsilon*ws->gnorm*opl_dnrm2(n, d)) :
+            (ws->gd >= zero)) {
+          /* Insufficient descent direction.  Manage to restart the L-BFGS with
+             steepest descent. */
           ws->mp = 0;
           opl_dcopy_free(n, g, d, isfree);
         }
       }
       if (ws->mp <= 0) {
-        /* L-BFGS recursion has been restarter because it has failed to produce
+        /* L-BFGS recursion has been restarted because it has failed to produce
            an acceptable search direction. */
           ++ws->restarts;
       }
@@ -595,9 +598,7 @@ next_step(opl_vmlmb_workspace_t* ws, double x[])
   }
 
   /* Require the caller to compute the function and its gradient. */
-  opl_set_context(&CONTEXT(ws), OPL_SUCCESS,
-                  "compute f(x) and g(x)", OPL_PERMANENT);
-  return (TASK(ws) = OPL_TASK_FG);
+  return success(ws, OPL_TASK_FG, "compute f(x) and g(x)");
 }
 
 static int
