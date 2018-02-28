@@ -911,8 +911,14 @@ opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value);
  *         function.  A NaN value is returned if there is no such bound or in
  *         case of error (i.e. `ws` is `NULL`).
  */
-extern double
-opl_vmlmb_get_fmin(opl_vmlmb_workspace_t* ws);
+extern opl_integer_t
+opl_vmlmb_get_n(opl_vmlmb_workspace_t* ws);
+
+extern opl_integer_t                                                                
+opl_vmlmb_get_m(opl_vmlmb_workspace_t* ws);                                          
+
+extern double                                
+opl_vmlmb_get_fmin(opl_vmlmb_workspace_t* ws);                                         
 
 extern opl_status_t
 opl_vmlmb_set_fatol(opl_vmlmb_workspace_t* ws, double value);

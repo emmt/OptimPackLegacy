@@ -145,6 +145,8 @@ success(opl_vmlmb_workspace_t* ws, opl_task_t task, const char* mesg)
     return rvalue;                                      \
   }
 
+GET_MEMBER(opl_integer_t, n, ws->n, NaN);
+GET_MEMBER(opl_integer_t, m, ws->m, NaN);                      
 GET_MEMBER(double, fmin, ws->fmin, NaN);
 GET_MEMBER(double, fatol, ws->fatol, NaN);
 GET_MEMBER(double, frtol, ws->frtol, NaN);
