@@ -670,7 +670,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  * memory variable metric (BFGS) method; optionally, the parameters may be
  * bounded.  The user must evaluate the function and the gradient.
  *
- * VMLM-B is implemented via two functions: opl_vmlmb_setup for initialization
+ * VMLM-B is implemented via two functions: opl_vmlmb_monolithic_workspace_init for initialization
  * and opl_vmlmb_iterate for further iterations.  These functions use reverse
  * communication.  The user must choose an initial approximation X to the
  * minimizer, evaluate the function and the gradient at X, and make the initial
@@ -685,8 +685,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *       limited memory variable metric (BFGS) approximation of the inverse of
  *       the Hessian.  For large problems, M = 3 to 5 gives good results.  For
  *       small problems, M should be less or equal N.  The larger is M (and N)
- *       the more computer memory will be needed to store the workspaces (see
- *       DSAVE).
+ *       the more computer memory will be needed to store the workspace WS.
  *
  *   FRTOL is the relative error desired in the function (e.g.  FRTOL=1e-8).
  *       Convergence occurs if the estimate of the relative error between F(X)
@@ -710,16 +709,8 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *       BFGS recursion is restarted, whenever the search direction is not
  *       sufficiently "descending".
  *
- *   CSAVE is a character workspace array of length OPL_VMLMB_CSAVE_NUMBER
- *       (same as OPL_MSG_SIZE) which is used to store additional information
- *       on exit with convergence, a warning or an error.
- *
- *   ISAVE is an integer workspace array of length OPL_VMLMB_ISAVE_NUMBER.
- *
- *   DSAVE is a floating point workspace array of length equal to the value
- *       returned by the macro OPL_VMLMB_DSAVE_NUMBER(N, M):
- *
- *           26 + N + 2*M*(N + 1).
+ *   WS is a  workspace array of length equal to the value
+ *       returned by opl_vmlmb_monolithic_workspace_size(N,M)
  *
  *   X is a double precision array of length N.  On entry, X is an
  *       approximation to the solution.  On exit with TASK = OPL_TASK_CONV, X
@@ -766,7 +757,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *       the only case where ISFREE is modified).  As for ISFREE, H needs only
  *       to be specifed the first time opl_vmlmb is called and when JOB=2.
  *
- *   TASK is the value returned by opl_vmlmb_setup and opl_vmlmb_iterate.  It
+ *   TASK is the value returned opl_vmlmb_iterate.  It
  *       can have one of the following values:
  *
  *           OPL_TASK_FG - caller must evaluate the function and gradient at X
@@ -785,14 +776,13 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *
  *           OPL_TASK_WARN - VMLMB is not able to satisfy the convergence
  *               conditions.  The exit value of X contains the best
- *               approximation found so far.  Warning message is available in
- *               CSAVE.
+ *               approximation found so far.  Warning message is given by
+ *               opl_vmlmb_get_reason(ws).
  *
  *           OPL_TASK_ERROR then there is an error in the input arguments.
- *               Error message is available in CSAVE.
+ *               Error message is  given by opl_vmlmb_get_reason(ws).
  *
- * The caller must not modify the workspace arrays CSAVE, ISAVE and DSAVE
- * between calls to opl_vmlmb_setup and further calls to opl_vmlmb_iterate.
+ * The caller must not modify the workspace array WS between calls to opl_vmlmb_monolithic_workspace_init and further calls to opl_vmlmb_iterate.
  *
  * A typical invocation of VMLMB for unconstrained minimization has the
  * following outline:
@@ -801,11 +791,29 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *    for (i=0 ; i<n ; ++i) x[i] = ... ;
  *
  *    // Allocate and setup workspaces:
- *    csave = malloc(OPL_VMLMB_CSAVE_NUMBER*sizeof(char));
- *    isave = malloc(OPL_VMLMB_ISAVE_NUMBER*sizeof(opl_integer_t));
- *    dsave = malloc(OPL_VMLMB_DSAVE_NUMBER(n, m)*sizeof(double));
- *    task = opl_vmlmb_setup(n, m, fmin, fatol, frtol, sftol, sgtol, sxtol,
- *                          csave, isave, dsave);
+ *    size = opl_vmlmb_monolithic_workspace_size(n, m);
+ *    buffer = malloc(size*sizeof(char));
+ *    ws = opl_vmlmb_monolithic_workspace_init((char *)buffer, n, m);
+ *
+ *
+ *    //Configure VMLMB instance  
+ *    # define SET_ATTRIBUTE(name, invalid)                       \
+ *    {double value = name ;                                      \
+ *    if ((invalid) ||                                            \
+ *    opl_vmlmb_set_##name(ws, value) != OPL_SUCCESS) {           \
+ *    mexErrMsgTxt("invalid value for `" #name "`");              \
+ *    }}
+ *    SET_ATTRIBUTE(fmin, FALSE);
+ *    SET_ATTRIBUTE(fatol, value < 0);
+ *    SET_ATTRIBUTE(frtol, value < 0);
+ *    SET_ATTRIBUTE(sftol, value <= 0 || value >= 1);
+ *    SET_ATTRIBUTE(sgtol, value <= 0 || value >= 1);
+ *    SET_ATTRIBUTE(sxtol, value <= 0 || value >= 1);
+ *    SET_ATTRIBUTE(delta, value < 0);
+ *    SET_ATTRIBUTE(epsilon, value < 0);
+ *    # undef SET_ATTRIBUTE
+ *
+ *    task = OPL_TASK_FG;
  *    for (;;) {
  *      if (task == OPL_TASK_FG) {
  *        f = ...;  // evaluate the function at X; store in F
@@ -813,13 +821,13 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *      } else if (task == OPL_TASK_NEWX) {
  *         // New successful step: the approximation X, function F, and
  *         // gradient G, are available for inspection.
- *      } else {
+ *      } else if {
  *        // Convergence, or error, or warning
- *        fprintf(stderr, "%s\n", csave);
+ *        fprintf(stderr, "%s\n", opl_vmlmb_get_reason(ws));
  *        break;
  *      }
  *      // Computes next step:
- *      task = opl_vmlmb_iterate(x, &f, g, NULL, NULL, csave, isave, dsave);
+ *      task = opl_vmlmb_iterate(ws, x, &f, g, NULL, NULL);
  *    }
  *
  * A typical invocation of VMLMB for bound-constrained minimization has the
@@ -829,12 +837,29 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *    for (i=0 ; i<n ; ++i) x[i] = ... ;
  *
  *    // Allocate and setup workspaces:
- *    csave = malloc(OPL_VMLMB_CSAVE_NUMBER*sizeof(char));
- *    isave = malloc(OPL_VMLMB_ISAVE_NUMBER*sizeof(opl_integer_t));
- *    dsave = malloc(OPL_VMLMB_DSAVE_NUMBER(n, m)*sizeof(double));
- *    task = opl_vmlmb_setup(n, m, fmin, fatol, frtol, sftol, sgtol, sxtol,
- *                          csave, isave, dsave);
- *    eval = 0; // number of evaluations
+ *    size = opl_vmlmb_monolithic_workspace_size(n, m);
+ *    buffer = malloc(size*sizeof(char));
+ *    ws = opl_vmlmb_monolithic_workspace_init((char *)buffer, n, m);
+ *
+ *
+ *    //Configure VMLMB instance  
+ *    # define SET_ATTRIBUTE(name, invalid)                       \
+ *    {double value = name ;                                      \
+ *    if ((invalid) ||                                            \
+ *    opl_vmlmb_set_##name(ws, value) != OPL_SUCCESS) {           \
+ *    mexErrMsgTxt("invalid value for `" #name "`");              \
+ *    }}
+ *    SET_ATTRIBUTE(fmin, FALSE);
+ *    SET_ATTRIBUTE(fatol, value < 0);
+ *    SET_ATTRIBUTE(frtol, value < 0);
+ *    SET_ATTRIBUTE(sftol, value <= 0 || value >= 1);
+ *    SET_ATTRIBUTE(sgtol, value <= 0 || value >= 1);
+ *    SET_ATTRIBUTE(sxtol, value <= 0 || value >= 1);
+ *    SET_ATTRIBUTE(delta, value < 0);
+ *    SET_ATTRIBUTE(epsilon, value < 0);
+ *    # undef SET_ATTRIBUTE
+ *
+ *    task = OPL_TASK_FG;
  *    for (;;) {
  *      if (task == OPL_TASK_FG) {
  *        opl_bounds_apply(n, x, xmin, xmax); // aply bound constraints
@@ -843,7 +868,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *        ++eval;
  *      } else if (task == OPL_TASK_FREEVARS) {
  *        // Determine the set of free variables:
- *        opl_bounds_free(n, isfree, x, g, xmin, xmax);
+ *        isfree = ...;
  *      } else if (task == OPL_TASK_NEWX) {
  *         // New successful step: the approximation X, function F, and
  *         // gradient G, are available for inspection.
@@ -852,7 +877,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *        fprintf(stderr, "%s\n", csave);
  *        break;
  *      }
- *      task = opl_vmlmb_iterate(x, &f, g, isfree, NULL, csave, isave, dsave);
+ *      task = opl_vmlmb_iterate(ws, x, &f, g, isfree, NULL);
  *    }
  *
  *
