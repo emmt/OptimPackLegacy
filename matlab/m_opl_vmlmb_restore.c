@@ -56,8 +56,8 @@ void mexFunction( int nlhs, mxArray *plhs[],
         mexErrMsgTxt("1 output argument allowed.");
     }
     
-    ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); // get the workspace
-    n = opl_vmlmb_get_n(ws);   // number of variable
+    ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
+    n = opl_vmlmb_get_n(ws);   /* number of variable */
     
     /* Control the input x */
     if ( !mxIsDouble(prhs[1]) || mxIsComplex(prhs[1]))
