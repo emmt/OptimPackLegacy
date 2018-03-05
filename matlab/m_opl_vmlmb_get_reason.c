@@ -49,7 +49,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
         mexErrMsgTxt("1 output argument allowed."); 
   } 
   
-  ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); // get the workspace
+  ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
  
   plhs[0] = mxCreateString(opl_vmlmb_get_reason(ws));
 }

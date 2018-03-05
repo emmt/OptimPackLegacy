@@ -74,7 +74,7 @@ opl_csrch_get_task(opl_csrch_workspace_t* ws)
   return (ws != NULL ? ws->task : OPL_TASK_ERROR);
 }
 
-opl_task_t
+opl_status_t
 opl_csrch_get_status(opl_csrch_workspace_t* ws)
 {
   return (ws != NULL ? ws->context.status : OPL_ILLEGAL_ADDRESS);

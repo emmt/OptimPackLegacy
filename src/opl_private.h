@@ -36,6 +36,7 @@
 /*---------------------------------------------------------------------------*/
 /* USEFUL MACROS */
 
+#ifndef __STRICT_ANSI__
 #ifndef _OPL_FORCE_INLINE
 #  if defined(_MSC_VER) /* Microsoft Visual Studio */
 #    define _OPL_FORCE_INLINE __forceinline
@@ -44,6 +45,7 @@
 #  elif defined( __cplusplus) /* C++ Compiler */
 #    define _OPL_FORCE_INLINE inline
 #  endif
+#endif
 #endif
 
 /* OPL_STRINGIFY takes an argument and wraps it in "" (double quotation
