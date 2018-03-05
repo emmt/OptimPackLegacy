@@ -381,7 +381,7 @@ extern opl_task_t opl_csrch_get_task(opl_csrch_workspace_t* ws);
 /**
  * Get the status of the last operation on a line search instance.
  */
-extern opl_task_t opl_csrch_get_status(opl_csrch_workspace_t* ws);
+extern opl_status_t opl_csrch_get_status(opl_csrch_workspace_t* ws);
 
 
 /**
