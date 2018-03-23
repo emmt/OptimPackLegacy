@@ -330,6 +330,8 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     elapsed = array(double, 3);
     timer, elapsed;
     cpu_start = elapsed(1);
+    print_header = (! use_printer);
+    last_print_iter = -1;
   }
   if (structof(x) != double) {
     x = double(x);
@@ -386,13 +388,16 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         msg = swrite(format="too many iterations (%d)", iter);
       }
     }
-    if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0)) {
-      if (eval == 1 && ! use_printer) {
+    if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0) &&
+        iter > last_print_iter) {
+      /* Print information. */
+      if (print_header) {
         write, output, format="# Method %d (MEM=%d): %s\n#\n",
           0, mem, method_name;
         write, output, format="# %s\n# %s\n",
           "ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN",
           "---------------------------------------------------------------";
+        print_header = 0n;
       }
       timer, elapsed;
       cpu = 1e3*(elapsed(1) - cpu_start);
@@ -407,6 +412,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       if (use_viewer) {
         viewer, x, extra;
       }
+      last_print_iter = iter;
     }
     if (stop) {
       if (msg && (verb || (task != 3 && ! quiet))) {
