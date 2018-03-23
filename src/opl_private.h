@@ -40,7 +40,7 @@
 #  if defined(_MSC_VER) /* Microsoft Visual Studio */
 #    define _OPL_FORCE_INLINE __forceinline
 #  elif defined(__GNUC__) /* GNU Compiler */
-#    define _OPL_FORCE_INLINE inline __attribute__((always_inline))
+#    define _OPL_FORCE_INLINE static inline __attribute__((always_inline))
 #  elif defined( __cplusplus) /* C++ Compiler */
 #    define _OPL_FORCE_INLINE inline
 #  endif
