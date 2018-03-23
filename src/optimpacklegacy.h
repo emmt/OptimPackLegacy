@@ -670,12 +670,12 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  * memory variable metric (BFGS) method; optionally, the parameters may be
  * bounded.  The user must evaluate the function and the gradient.
  *
- * VMLM-B is implemented via two functions: opl_vmlmb_monolithic_workspace_init for initialization
- * and opl_vmlmb_iterate for further iterations.  These functions use reverse
- * communication.  The user must choose an initial approximation X to the
- * minimizer, evaluate the function and the gradient at X, and make the initial
- * call with TASK set to OPL_TASK_FG.  On exit TASK indicates the required
- * action.
+ * VMLM-B is implemented via two functions: opl_vmlmb_monolithic_workspace_init
+ * for initialization and opl_vmlmb_iterate for further iterations.  These
+ * functions use reverse communication.  The user must choose an initial
+ * approximation X to the minimizer, evaluate the function and the gradient at
+ * X, and make the initial call with TASK set to OPL_TASK_FG.  On exit TASK
+ * indicates the required action.
  *
  * The arguments are:
  *
@@ -780,9 +780,10 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *               opl_vmlmb_get_reason(ws).
  *
  *           OPL_TASK_ERROR then there is an error in the input arguments.
- *               Error message is  given by opl_vmlmb_get_reason(ws).
+ *               Error message is given by opl_vmlmb_get_reason(ws).
  *
- * The caller must not modify the workspace array WS between calls to opl_vmlmb_monolithic_workspace_init and further calls to opl_vmlmb_iterate.
+ * The caller must not modify the workspace array WS between calls to
+ * opl_vmlmb_monolithic_workspace_init and further calls to opl_vmlmb_iterate.
  *
  * A typical invocation of VMLMB for unconstrained minimization has the
  * following outline:
@@ -796,7 +797,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *    ws = opl_vmlmb_monolithic_workspace_init((char *)buffer, n, m);
  *
  *
- *    //Configure VMLMB instance  
+ *    //Configure VMLMB instance
  *    # define SET_ATTRIBUTE(name, invalid)                       \
  *    {double value = name ;                                      \
  *    if ((invalid) ||                                            \
@@ -821,7 +822,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *      } else if (task == OPL_TASK_NEWX) {
  *         // New successful step: the approximation X, function F, and
  *         // gradient G, are available for inspection.
- *      } else if {
+ *      } else {
  *        // Convergence, or error, or warning
  *        fprintf(stderr, "%s\n", opl_vmlmb_get_reason(ws));
  *        break;
@@ -842,7 +843,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *    ws = opl_vmlmb_monolithic_workspace_init((char *)buffer, n, m);
  *
  *
- *    //Configure VMLMB instance  
+ *    //Configure VMLMB instance
  *    # define SET_ATTRIBUTE(name, invalid)                       \
  *    {double value = name ;                                      \
  *    if ((invalid) ||                                            \
@@ -939,11 +940,11 @@ opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value);
 extern opl_integer_t
 opl_vmlmb_get_n(opl_vmlmb_workspace_t* ws);
 
-extern opl_integer_t                                                                
-opl_vmlmb_get_m(opl_vmlmb_workspace_t* ws);                                          
+extern opl_integer_t
+opl_vmlmb_get_m(opl_vmlmb_workspace_t* ws);
 
-extern double                                
-opl_vmlmb_get_fmin(opl_vmlmb_workspace_t* ws);                                         
+extern double
+opl_vmlmb_get_fmin(opl_vmlmb_workspace_t* ws);
 
 extern opl_status_t
 opl_vmlmb_set_fatol(opl_vmlmb_workspace_t* ws, double value);
