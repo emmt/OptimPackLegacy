@@ -47,7 +47,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
     double* g;
     int  *task;
     opl_vmlmb_workspace_t* ws;
-    int n, m;
+    long n, m;
     
     if (nrhs != 4) {
         mexErrMsgTxt("expecting between 4 arguments");

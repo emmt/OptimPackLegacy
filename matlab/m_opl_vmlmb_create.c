@@ -40,7 +40,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
                   int nrhs, const mxArray *prhs[] )
 { 
     double fatol, frtol, sftol, sgtol, sxtol, epsilon, delta;
-    int n, m,size, fmin=FALSE;
+    long n, m,size, fmin=FALSE;
     mwSize dims[]={1,1};
     opl_vmlmb_workspace_t* ws;
       /* Control of the number of inputs and outputs */ 
