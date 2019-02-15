@@ -13,13 +13,16 @@ import numpy as np
 
 ## DEFINE FUNCTION TO MINIMZIE ##
 
-def banana_array(x,**kwargs):
+def banana_scalar(x,**kwargs):
 	return 100*(x[1,...]-x[0,...]**2)**2 + (1.0-x[0,...])**2
 
+
+#The function used in `py_vmlmb_iterate` must return an array of size=1. This wrapper does this job
 def banana(x,**kwargs):
 	a = np.zeros(1,dtype=np.float64)
-	a[0] = banana_array(x,**kwargs)
+	a[0] = banana_scalar(x,**kwargs)
 	return a
+
 
 def banana_grad(x,**kwargs):
 	u = x[1] - x[0]**2
@@ -61,7 +64,7 @@ for i in range(1000):
         isfree = (((x>blow) + (g<0))*((x<bup)+(g>0))).astype(np.int32)
         
     if task == 3:
-        print("x = [%.2f,%.2f]"%tuple(x))
+        print("x = [%.3f,%.3f]"%tuple(x))
     if task == 4:
         print("Algo converged in %u iter and %u evaluations"%(i,nb_eval))
         break

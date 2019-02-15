@@ -10,14 +10,8 @@ from loppy import Optimizer
 import numpy as np
 
 #%% Define functions, start point and bounds
-
-def banana_array(x,**kwargs):
-    return 100*(x[1,...]-x[0,...]**2)**2 + (1.0-x[0,...])**2
-
 def banana(x,**kwargs):
-    a = np.zeros(1,dtype=np.float64)
-    a[0] = banana_array(x,**kwargs)
-    return a
+    return 100*(x[1,...]-x[0,...]**2)**2 + (1.0-x[0,...])**2
 
 def banana_grad(x,**kwargs):
     u = x[1] - x[0]**2

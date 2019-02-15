@@ -25,9 +25,21 @@ TASK_CONV = 4
 TASK_WARN = 5
 TASK_ERROR = 6
 
+
+def decorate_array(func):
+    """
+    Decorator to use if the function `func` returns a scalar, and makes it return an array of size=1
+    """
+    def decorated(*args,**kwargs):
+        out = np.zeros(1,dtype=np.float64)
+        out[0] = func(*args,**kwargs)
+        return out
+    return decorated
+
+
 class Optimizer(object):
     def __init__(self,func,grad,x,callback=None,blow=None,bup=None,verbose=False,
-                 itmax=1000,fatol=1e-13,frtol=1e-11,**kwargs):
+                 itmax=1000,fatol=None,frtol=None,fmin=None,**kwargs):
         self.func = func
         self.grad = grad
         self.kwargs = kwargs
@@ -46,11 +58,14 @@ class Optimizer(object):
         self.verbose = verbose
         self.itmax = int(itmax)
         
-        self.fatol=np.float64(fatol)
-        self.frtol=np.float64(frtol)
+        if fmin is not None:
+            optimpacklegacy.py_vmlmb_set_fmin(self.ws,np.float64(fmin))
         
-        optimpacklegacy.py_vmlmb_set_fatol(self.ws,fatol)
-        optimpacklegacy.py_vmlmb_set_frtol(self.ws,frtol)
+        if fatol is not None:
+            optimpacklegacy.py_vmlmb_set_fatol(self.ws,np.float64(fatol))
+        
+        if frtol is not None:
+            optimpacklegacy.py_vmlmb_set_frtol(self.ws,np.float64(frtol))
         
         self.last_f = None
         self.last_g = None
@@ -134,14 +149,15 @@ class Optimizer(object):
         except:
             print("Couldn't evaluate `grad(x,**kwargs)`")
 		
-        self.last_f = f #save func
-        self.last_g = g #save grad
-		
         if not type(self.x) is np.ndarray:
             raise TypeError("`x` must be a numpy.ndarray")
-		
+
+        if type(f) is np.float64:
+            self.func = decorate_array(self.func)
+            f = self.func(self.x,**self.kwargs)
+
         if not type(f) is np.ndarray:
-            raise TypeError("`func` must return a numpy.ndarray of length=1")
+            raise TypeError("`func` must return a numpy.float64 or a numpy.ndarray of length=1")
 		
         if not type(g) is np.ndarray:
             raise TypeError("`grad` must return a numpy.ndarray")
@@ -166,4 +182,7 @@ class Optimizer(object):
 		
         if len(g) != len(self.x):
             raise ValueError("`grad` must return an array of same size as `x`")
+            
+        self.last_f = f #save func
+        self.last_g = g #save grad
 
