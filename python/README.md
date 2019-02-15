@@ -13,6 +13,12 @@ This is the OptimPackLegacy adaptation in Python. Must be included in the OptimP
   * `test.py` (test if Cython imported functions work properly)
   * `testloppy.py` (test if Python LOPPY Optimizer class works properly)
 
+Note: if the numpy library cannot be found during cython build, use the following command before building cython module
+
+`cp -r ~/.local/lib/python3.6/site-packages/numpy/core/include/numpy ~/.local/include`
+
+where you may change `python3.6` with your actual Python folder. This issue was mentionned on [Github]<https://github.com/andersbll/cudarray/issues/25>
+
 ## Content
 
 | NAME                              | DESCRIPTION                                                              |
