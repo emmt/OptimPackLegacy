@@ -38,8 +38,72 @@ def decorate_array(func):
 
 
 class Optimizer(object):
-    def __init__(self,func,grad,x,callback=None,blow=None,bup=None,verbose=False,
-                 itmax=1000,fatol=None,frtol=None,fmin=None,**kwargs):
+    """
+    Solves the following minimisation problem, with eventual bounds:
+    	xs = argmin{f(x,**kwargs)} , b_low < x <b_up
+    
+    Notes
+    -----
+    The minimizer uses VMLM-B method (Eric Thiébaut - CRAL, Lyon, France) and requires computation of the gradient by the user. It is designed to solve problems with high number of unknowns.
+    
+    The core of the algorithm is based on the OptimPackLegacy library written in C, under GPL v2 license. Adaptation to Python was made using Cython
+    
+    Example
+    -------
+    >>> from loppy import Optimizer
+    >>> func = ... # define your function
+    >>> grad = ... # define its gradient
+    >>> x0 = ...   # give an initial guess
+    >>> opti = Optimizer(func,grad,x0,blow=...,bup=...)
+    >>> opti.run()
+    >>> print(opti.x)
+    
+    See also
+    --------
+    Optimizer.__init__.__doc__
+    
+    """
+    def __init__(self,func,grad,x,callback=None,blow=None,bup=None,
+                 verbose=False,itmax=1000,fatol=None,frtol=None,fmin=None,
+                 delta=None,epsilon=None,**kwargs):
+        """
+    Optimizer initialisation method
+    	
+    Parameters
+    ----------
+    func : callable
+        Function to minimize
+    grad : callable
+        Gradient of the function to minimize
+    x : numpy.ndarray(dtype=float64)
+        Initial guess on parameters
+       	
+    Keywords
+    --------
+    callback : callable
+        Function to call after a new `x` is found
+        (e.g. for visualization)
+    blow : scalar or numpy.ndarray(dtype=numpy.float64)
+        Lower bounds on 'x' (default: no bounds)
+    bup : scalar or numpy.ndarray(dtype=numpy.float64)
+        Upper bounds on 'x' (default: no bounds)
+    verbose : bool
+        Display inline information about minimization (default=False)
+    itmax : int
+        Number maximum of OptimPack iterations (default=1000)
+    fmin : float
+        Minimal expected value of `func`
+    fatol : float
+        Absolute tolerance on f such as
+        |f(x_{k})-f(x_{k+1})| < fatol
+    frtol : float
+        Relative tolerance on f such as
+        2*|f(x_{k})-f(x_{k+1})|/(f(x_{k})+f(x_{k+1})|) < frtol
+    delta : float
+    epsilon : float
+    **kwargs : set of keywords
+        Eventual keywords to be given to your functions `func` and `grad`
+        """
         self.func = func
         self.grad = grad
         self.kwargs = kwargs
@@ -67,6 +131,12 @@ class Optimizer(object):
         if frtol is not None:
             optimpacklegacy.py_vmlmb_set_frtol(self.ws,np.float64(frtol))
         
+        if delta is not None:
+            optimpacklegacy.py_vmlmb_set_delta(self.ws,np.float64(delta))
+        
+        if epsilon is not None:
+            optimpacklegacy.py_vmlmb_set_epsilon(self.ws,np.float64(epsilon))
+        
         self.last_f = None
         self.last_g = None
         self.task = 0
@@ -91,7 +161,7 @@ class Optimizer(object):
         
 
     def __repr__(self):
-        return "Optimpack optimizer [iter=%u] [task=%u] [status=%u]"%(self.iter,self.task,self.status)
+        return "Optimpack Optimizer [iter=%u] [task=%u] [status=%u]"%(self.iter,self.task,self.status)
     
     def activate(self):
         """Compute `active` set in case of bounds"""
@@ -126,17 +196,32 @@ class Optimizer(object):
         self.task = optimpacklegacy.py_vmlmb_iterate(self.ws,self.x,self.last_f,self.last_g,self.active)
         self.iter += 1
         
+        if self.verbose:
+            print("OPL: %s"%optimpacklegacy.py_vmlmb_get_reason(self.ws))
+        
+        
     def run(self):
+        if self.verbose:
+            print("Optimizer starts")
         self.status = STATUS_NOT_FINISHED
         while (self.iter<self.itmax) and (self.task not in [TASK_CONV,TASK_ERROR,TASK_WARN]):
             self.step()
-            
+        
+        message = optimpacklegacy.py_vmlmb_get_reason(self.ws)
+        
         if self.iter>=self.itmax:
             self.status = STATUS_ITMAX
-            
+            message = "max number of iterations reached"
+        
+        if self.verbose:
+            print("Optimizer ends (%s)"%message)
+        
         return self.status
 
-
+    
+    def restart(self):
+        optimpacklegacy.py_vmlmb_restart(self.ws)    
+    
     def checktypes(self):
         """ Check if user inputs are okay"""
         try:
