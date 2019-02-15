@@ -35,7 +35,7 @@ INSTALL = cp -p
 CC = gcc -pipe
 #CPPFLAGS =  -I. -DOP_INTEGER=long -DOP_LOGICAL=int
 CPPFLAGS = -I.
-CFLAGS = -O2 -Wall
+CFLAGS = -O2 -Wall -fPIC
 
 RM = rm -f
 AR = ar
