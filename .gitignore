@@ -4,6 +4,7 @@ __pycache__/
 .Python
 env/
 build/
+python/optimpacklegacy.c
 
 *~
 *.bak
