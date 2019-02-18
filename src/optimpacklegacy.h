@@ -37,7 +37,7 @@
  *   OPL_LOGICAL = data type of the result of a logical test
  */
 #ifndef OPL_INTEGER
-# define OPL_INTEGER int
+# define OPL_INTEGER long
 #endif
 #ifndef OPL_LOGICAL
 # define OPL_LOGICAL int

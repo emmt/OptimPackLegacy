@@ -121,12 +121,12 @@ you may have to set the values of the following macros:
 This must be  done *before* `optimpacklegacy.h` get included.   If these macros
 are not defined, the default assumed in `optimpacklegacy.h` is:
 
-    OPL_INTEGER = int
+    OPL_INTEGER = long
     OPL_LOGICAL = int
 
 For instance, one should write:
 
-    #define OPL_INTEGER long
+    #define OPL_INTEGER int64_t
     #define OPL_LOGICAL int
     #include "optimpacklegacy.h"
     ...
@@ -135,7 +135,7 @@ Of course, the installed OptimPackLegacy library must have been compiled with
 the correct data types.  Another possibility is to define these macros when
 calling CPP (the C preprocessor), *e.g.* in `src/Makefile`:
 
-     CPPFLAGS = -DOPL_INTEGER=long -DOPL_LOGICAL=int -I.
+     CPPFLAGS = -DOPL_INTEGER=int64_t -DOPL_LOGICAL=int -I.
 
 a final possibility is to edit `optimpacklegacy.h` and to adjust the default
 values of these macros (at the very beginning of this file).  If you plan to
