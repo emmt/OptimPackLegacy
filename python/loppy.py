@@ -25,7 +25,7 @@ TASK_CONV = 4
 TASK_WARN = 5
 TASK_ERROR = 6
 
-
+#%% Decorators that could be used by user
 def decorate_array(func):
     """
     Decorator to use if the function `func` returns a scalar, and makes it return an array of size=1
@@ -37,6 +37,25 @@ def decorate_array(func):
     return decorated
 
 
+def decorate_fg(func,grad):
+    """
+    Decorator that returns (f,g) from `func` and `grad`
+    The user should better consider to write its own unique function that takes advantages of internal similarities between computation of `func` and `grad`
+    Using this decorator is the simplest way to merge the two functions `func` and `grad`, but does not take advantage of any similarities between computation of `func` and `grad`
+    """
+    def decorated(*args,**kwargs):
+        try:
+            f = func(*args,**kwargs)
+        except:
+            raise RuntimeError("Couldn't evaluate `func(x,**kwargs)`")
+        try:
+            g = grad(*args,**kwargs)
+        except:
+            raise RuntimeError("Couldn't evaluate `grad(x,**kwargs)`")
+        return f,g
+    return decorated
+
+#%% Optimizer class
 class Optimizer(object):
     """
     Solves the following minimisation problem, with eventual bounds:
@@ -63,7 +82,7 @@ class Optimizer(object):
     Optimizer.__init__.__doc__
     
     """
-    def __init__(self,func,grad,x,callback=None,blow=None,bup=None,
+    def __init__(self,func_grad,x,callback=None,blow=None,bup=None,
                  verbose=False,itmax=1000,fatol=None,frtol=None,fmin=None,
                  delta=None,epsilon=None,**kwargs):
         """
@@ -71,10 +90,9 @@ class Optimizer(object):
     	
     Parameters
     ----------
-    func : callable
-        Function to minimize
-    grad : callable
-        Gradient of the function to minimize
+    func_grad : callable
+        Function to minimize and its gradient. Must satisfy the syntax
+        f,g = func_grad(x,**kwargs)
     x : numpy.ndarray(dtype=float64)
         Initial guess on parameters
        	
@@ -82,7 +100,8 @@ class Optimizer(object):
     --------
     callback : callable
         Function to call after a new `x` is found
-        (e.g. for visualization)
+        The syntax is `callback(x,f,g)`
+        (e.g. for visualization or criteria value record)
     blow : scalar or numpy.ndarray(dtype=numpy.float64)
         Lower bounds on 'x' (default: no bounds)
     bup : scalar or numpy.ndarray(dtype=numpy.float64)
@@ -102,10 +121,9 @@ class Optimizer(object):
     delta : float
     epsilon : float
     **kwargs : set of keywords
-        Eventual keywords to be given to your functions `func` and `grad`
+        Eventual keywords to be given to your function `func_grad`
         """
-        self.func = func
-        self.grad = grad
+        self.func_grad = func_grad
         self.kwargs = kwargs
         self.callback = callback
         
@@ -150,13 +168,19 @@ class Optimizer(object):
 
         # Eventually apply bounds on `x`
         self.applybounds()
+        
+        # Check x
+        if not type(self.x) is np.ndarray:
+            raise TypeError("`x` must be a numpy.ndarray")
+
+        if self.x.ndim != 1:
+            raise TypeError("`x` must be an array of dimension ndim=1")
 		
-        # Check types, last_f and last_g are populated for `active`
-        self.checktypes()
+        if not self.x.dtype == np.float64:
+            raise TypeError("`x` must be of dtype=numpy.float64")
         
         # Create `active` set, using last_g previously computed
         self.active = np.zeros(self.n,dtype=np.int32)
-        self.activate()
         
         
 
@@ -177,17 +201,49 @@ class Optimizer(object):
             self.x = self.x*(self.x>self.blow) + self.blow*(self.x<=self.blow)
         if self.bup is not None:
             self.x = self.x*(self.x<self.bup) + self.bup*(self.x>=self.bup)
-
+    
+    def compute_fg(self):
+        """Compute func and grad for VMLMB. Also check types."""
+        try:
+            self.last_f, self.last_g = self.func_grad(self.x,**self.kwargs)
+        except:
+            raise RuntimeError("Couldn't evaluate `func_grad(x,**kwargs)`")
+            
+        if type(self.last_f) is np.float64:
+            #if func returns a scalar, make an array from it
+            self.last_f = np.array([self.last_f])
+            
+        if not type(self.last_f) is np.ndarray:
+            raise TypeError("`func` must return a numpy.float64 or a numpy.ndarray of length=1")
+		
+        if not type(self.last_g) is np.ndarray:
+            raise TypeError("`grad` must return a numpy.ndarray")
+            
+        if self.last_g.ndim != 1:
+            raise TypeError("`grad` must return an array of dimension ndim=1")
+		
+        if len(self.last_f) != 1:
+            raise TypeError("`func` must return a numpy.ndarray of length=1")
+            
+        if not self.last_f.dtype == np.float64:
+            raise TypeError("`func` must return an array of dtype=numpy.float64")
+		
+        if not self.last_g.dtype == np.float64:
+            raise TypeError("`grad` must return an array of dtype=numpy.float64")
+		
+        if len(self.last_g) != len(self.x):
+            raise ValueError("`grad` must return an array of same size as `x`")
+    
     def step(self):
+        """Run one step of VMLMB"""
         if self.task == TASK_START or self.task == TASK_FG:
             self.applybounds()
-            self.last_f = self.func(self.x,**self.kwargs)
-            self.last_g = self.grad(self.x,**self.kwargs)
+            self.compute_fg()
         elif self.task == TASK_ISFREE:
             self.activate()
         elif self.task == TASK_NEWX:
             if self.callback is not None:
-                self.callback(self.x)
+                self.callback(self.x,self.last_f,self.last_g)
         elif self.task == TASK_CONV:
             self.status = STATUS_CONV
         elif self.task == TASK_ERROR or self.task == TASK_WARN:
@@ -201,6 +257,15 @@ class Optimizer(object):
         
         
     def run(self):
+        """Run VMLMB steps while convergence is not reached or max iteration not reached
+        Result is saved into the instance attribute `.x`
+        
+        Returns
+        -------
+        status : int
+            Integer describing loop exit status. See the STATUS_*** constants
+            See also the instance attribute `.message`
+        """
         if self.verbose:
             print("Optimizer starts")
         self.status = STATUS_NOT_FINISHED
@@ -213,6 +278,8 @@ class Optimizer(object):
             self.status = STATUS_ITMAX
             message = "max number of iterations reached"
         
+        self.message = message
+        
         if self.verbose:
             print("Optimizer ends (%s)"%message)
         
@@ -220,54 +287,5 @@ class Optimizer(object):
 
     
     def restart(self):
-        optimpacklegacy.py_vmlmb_restart(self.ws)    
-    
-    def checktypes(self):
-        """ Check if user inputs are okay"""
-        try:
-            f = self.func(self.x,**self.kwargs)
-        except:
-            print("Couldn't evaluate `func(x,**kwargs)`")
-		
-        try:
-            g = self.grad(self.x,**self.kwargs)
-        except:
-            print("Couldn't evaluate `grad(x,**kwargs)`")
-		
-        if not type(self.x) is np.ndarray:
-            raise TypeError("`x` must be a numpy.ndarray")
-
-        if type(f) is np.float64:
-            self.func = decorate_array(self.func)
-            f = self.func(self.x,**self.kwargs)
-
-        if not type(f) is np.ndarray:
-            raise TypeError("`func` must return a numpy.float64 or a numpy.ndarray of length=1")
-		
-        if not type(g) is np.ndarray:
-            raise TypeError("`grad` must return a numpy.ndarray")
-		
-        if self.x.ndim != 1:
-            raise TypeError("`x` must be an array of dimension ndim=1")
-		
-        if g.ndim != 1:
-            raise TypeError("`grad` must return an array of dimension ndim=1")
-		
-        if len(f) != 1:
-            raise TypeError("`func` must return a numpy.ndarray of length=1")
-		
-        if not self.x.dtype == np.float64:
-            raise TypeError("`x` must be of dtype=numpy.float64")
-		
-        if not f.dtype == np.float64:
-            raise TypeError("`func` must return an array of dtype=numpy.float64")
-		
-        if not g.dtype == np.float64:
-            raise TypeError("`grad` must return an array of dtype=numpy.float64")
-		
-        if len(g) != len(self.x):
-            raise ValueError("`grad` must return an array of same size as `x`")
-            
-        self.last_f = f #save func
-        self.last_g = g #save grad
+        optimpacklegacy.py_vmlmb_restart(self.ws) 
 
