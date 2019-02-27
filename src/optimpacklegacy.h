@@ -402,7 +402,7 @@ extern const char* opl_csrch_get_reason(opl_csrch_workspace_t* ws);
  *
  * @return The size in bytes of a Moré & Thuente line search instance.
  */
-extern size_t opl_csrch_get_workspace_size();
+extern size_t opl_csrch_get_workspace_size(void);
 
 /**
  * Create a new instance of Moré & Thuente line search.
@@ -412,7 +412,7 @@ extern size_t opl_csrch_get_workspace_size();
  *         #olp_csrch_destroy_workspace. `NULL` is returned in case of error
  *         (i.e. insufficient memory).
  */
-extern opl_csrch_workspace_t* opl_csrch_create_workspace();
+extern opl_csrch_workspace_t* opl_csrch_create_workspace(void);
 
 /**
  * Destroy an instance of Moré & Thuente line search.
