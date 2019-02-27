@@ -62,7 +62,9 @@ typedef unsigned char byte_t;
 static const double zero = 0.0;
 static const double one = 1.0;
 static const double NaN = 0.0/0.0;
+#if 0 /* not used */
 static const double Inf = 1.0/0.0;
+#endif
 
 /* Default settings. */
 #define DEFAULT_STPMAX   1e20
@@ -146,7 +148,7 @@ success(opl_vmlmb_workspace_t* ws, opl_task_t task, const char* mesg)
   }
 
 GET_MEMBER(opl_integer_t, n, ws->n, NaN);
-GET_MEMBER(opl_integer_t, m, ws->m, NaN);                      
+GET_MEMBER(opl_integer_t, m, ws->m, NaN);
 GET_MEMBER(double, fmin, ws->fmin, NaN);
 GET_MEMBER(double, fatol, ws->fatol, NaN);
 GET_MEMBER(double, frtol, ws->frtol, NaN);
