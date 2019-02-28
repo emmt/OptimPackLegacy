@@ -147,8 +147,6 @@ success(opl_vmlmb_workspace_t* ws, opl_task_t task, const char* mesg)
     return rvalue;                                      \
   }
 
-GET_MEMBER(opl_integer_t, n, ws->n, NaN);
-GET_MEMBER(opl_integer_t, m, ws->m, NaN);
 GET_MEMBER(double, fmin, ws->fmin, NaN);
 GET_MEMBER(double, fatol, ws->fatol, NaN);
 GET_MEMBER(double, frtol, ws->frtol, NaN);
@@ -159,6 +157,8 @@ GET_MEMBER(double, sftol, SFTOL(ws), NaN);
 GET_MEMBER(double, sgtol, SGTOL(ws), NaN);
 GET_MEMBER(double, step, ws->stp, NaN);
 GET_MEMBER(double, gnorm, ws->gnorm, NaN);
+GET_MEMBER(opl_integer_t, n, ws->n, 0);
+GET_MEMBER(opl_integer_t, m, ws->m, 0);
 GET_MEMBER(opl_task_t, task, TASK(ws), OPL_TASK_ERROR);
 GET_MEMBER(opl_status_t, status, STATUS(ws), OPL_ILLEGAL_ADDRESS);
 GET_MEMBER(opl_integer_t, iterations, ws->iterations, -1);
