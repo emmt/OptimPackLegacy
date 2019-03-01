@@ -1,9 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8; mode: python -*-
 """
-Created on Fri Feb 08 17:18:00 2019
-
-Cython entry file to connect optimpacklegacy to Python
+Script to build Python interface to the OptimPackLegacy library.
 
 - Remove eventual old compilation and open Makefile
 	cd src
@@ -18,7 +15,7 @@ Cython entry file to connect optimpacklegacy to Python
 	py3 test.py
 
 
-@author: rfetick
+@author: rfetick, emmt
 """
 
 from distutils.core import setup
@@ -27,14 +24,17 @@ from Cython.Build import cythonize
 
 import numpy
 
-op_extension = Extension(
-    name="optimpacklegacy",
-    sources=["optimpacklegacy.pyx"],
-    libraries=["optimpacklegacy"],
-    library_dirs=["../src"],
-    include_dirs=["../src",numpy.get_include()]
-)
 setup(
-    name="optimpacklegacy",
-    ext_modules=cythonize([op_extension])
+    ext_modules = cythonize(
+        [Extension(
+            name="optimpacklegacy",
+            sources=["optimpacklegacy.pyx"],
+            libraries=["optimpacklegacy"],
+            library_dirs=["."],
+            include_dirs=["../src", numpy.get_include()],
+            ## The following is to define a macro to avoid warnings about
+            ## using deprecated NumPy API.
+            #define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+        )]
+    )
 )
