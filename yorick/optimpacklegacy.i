@@ -187,8 +187,8 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
      GATOL, GRTOL - Absolute and relative gradient tolerances for convergence
          which is assumed whenever the Euclidean norm of the (projected)
          gradient is smaller or equal max(GATOL, GRTOL*GINIT) where GINIT is
-         the Euclidean norm of the (projected) initila gradient.  By default,
-         GTAOL=0 and GRTOL=1e-6.
+         the Euclidean norm of the (projected) initial gradient.  By default,
+         GATOL=0 and GRTOL=1e-6.
 
      VERB - Verbose mode?  If non-nil and non-zero, print out information every
          VERB iterations and for the final one.
@@ -345,7 +345,9 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       if (eval >= maxeval) {
         /* Too many function evaluations.  We restore the variables at the
            start of the line search which is a cheap way (no extra memory cost)
-           to recover variables which should be nearly the best ones. */
+           to recover variables which should be nearly the best ones.  We wait
+           until last iteration information have been printed to stop the
+           iterations. */
         stop = 1n;
         msg = swrite(format="too many function evaluations (%d)", eval);
         opl_vmlmb_restore, ws, x, fx, gx;
