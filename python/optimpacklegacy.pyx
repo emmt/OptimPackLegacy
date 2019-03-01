@@ -74,8 +74,7 @@ def get_message(code) -> str:
     return copl.opl_get_default_message(code)#.decode("utf-8")
 
 def clamp(x, lo = None, hi = None):
-    """
-    `clamp(x, lo = None, hi = None)` yields the result of clamping the values
+    """`clamp(x, lo = None, hi = None)` yields the result of clamping the values
     of array `x` between the lower and upper bounds respectively specified by
     `lo` and `hi`.  A given bound is ignored if the corresponding argument is
     `None`."""
@@ -102,6 +101,242 @@ def get_free_variables(x, g, lo = None, hi = None, dest = None):
         # operation x < hi || g > 0.
         dest *= np.maximum(x < hi, g > 0).astype(LOGICAL)
     return dest
+
+def zipfg(func, grad):
+    """
+    `zipfg(func,grad)` yields a function which, when called with argument `x`,
+    returns the tuple `(func(x),grad(x))`.  This may be useful to combine an
+    objective function and its gradient for VMLM-B algorithm.  However note
+    that it is usually more efficient to compute an objective function and its
+    gradient in a same function because they involve similar terms."""
+    return lambda x: (func(x), grad(x))
+
+try:
+    import resource
+    def cputime():
+        """cputime()
+
+        yields the user CPU time in seconds used since the start of the
+        process."""
+        return resource.getrusage(resource.RUSAGE_SELF)[0]
+
+except ImportError:
+    import time
+    # There is no distinction of user/system time under Windows, so we just use
+    # time.clock() with respect to some origin...
+    def cputime():
+        """cputime()
+
+        yields the time in seconds since the Epoch.  This is because, under
+        Windows, the consumed CPU time can't be measured."""
+        return time.clock()
+
+# Default printer for VMLM-B algorithm.
+def _default_vmlmb_printer(opt, x, f, cpu):
+    neval = opt.get_evaluations()
+    if neval == 0:
+        print("ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN")
+        print("---------------------------------------------------------------")
+    else:
+        niter = opt.get_iterations()
+        gnorm = opt.get_gnorm()
+        stpln = opt.get_step()
+        print("%4d %5d %10.3f  %+-24.15e%-9.1e%-9.1e" % (niter, neval,
+                                                         cpu*1e-3, f,
+                                                         gnorm, stpln))
+
+def vmlmb(fg, x, xmin=None, xmax=None, mem=None, h=None, fmin=None,
+          verb=-1, quiet=False, printer=_default_vmlmb_printer,
+          maxiter=None, maxeval=None, output=None,
+          frtol=None, fatol=None, gatol=None, grtol=None,
+          sftol=None, sgtol=None, sxtol=None):
+    """vmlmb(fg, x0, xmin=None, xmax=None, mem=None, h=None, fmin=None,
+          verb=-1, quiet=False, viewer=None, printer=None,
+          maxiter=None, maxeval=None, output=None,
+          frtol=None, fatol=None, gatol=None, grtol=None,
+          sftol=None, sgtol=None, sxtol=None) -> (x, fx, gx)
+
+    Find a minimum of a multivariate function by an iterative minimization
+    algorithm (a limited memory quasi-Newton method) possibly with simple bound
+    constraints on the parameters.
+
+
+    Result
+    ------
+
+    The solution `x`, the corresponding function value `fx` and gradient `gx`
+    are returned.  In case of early termination, the best solution found so far
+    is returned.  If the multivariate function has more than one minimum, which
+    minimum is returned is undefined (although it depends on the starting
+    variables `x0`).
+
+
+    Parameters
+    ----------
+
+    `fg` - User defined function implementing the computation of the objective
+         function value and its gradient.  Its prototype is:
+
+         def fg(x):
+              fx = .... # compute function value at X
+              gx = .... # store gradient of F in GX
+              return (fx, gx)
+
+         This is motivated by the fact that it is usually more efficient to
+         compute an objective function and its gradient in a same function
+         because they involve similar terms.  If the objective function and its
+         gradient are however implemented by two different functions, say
+         `func` and `grad`, `zipfg(func,grad)` can be used to specify `fg`.
+
+     `x0` - The starting solution (an array).
+
+     `xmin`, `xmax` - Lower and upper bounds for `x`.  Must be conformable with
+         the sought variables `x`.  For instance with `xmin=0`, the
+         non-negative solution will be returned.  Not taken into account when
+         set to `None` (the default).
+
+     `mem` - Number of previous iterates to memorize to compute the LBFGS
+         approximation of the inverse Hessian matrix (default:
+         `mem=min(5,len(x0))`).
+
+     `h` - Diagonal preconditioner.
+
+     `maxiter` - Maximum number of iterations (default: no limits).
+
+     `maxeval` - Maximum number of function evaluations (default: no limits).
+
+     `verb` - Must be an integer.  If greater or equal one, print out
+         information every `verb` iterations and for the final one.
+
+     `quiet` - If true and not in verbose mode, do not print warning nor
+         convergence error messages.
+
+     `printer` - User defined function to call every `verb` iterations (see
+         argument `verb` above) to printout iteration information.  The
+         function will be called as:
+
+            printer(opt, x, f, cpu)
+
+         where `opt` is the VMLM-B workspace used to perform the iterations,
+         `x` is the current solution, `f` is the function value and `cpu` is
+         the elapsed CPU time in seconds.  Methods `opt.get_evaluations()` or
+         `opt.get_iterations()` can be used to retrieve the number of
+         evaluations of the objective function and the number of iterations of
+         the algorithm.  If the number of evaluations is equal to zero, the
+         algorithm has not yet started and only some head lines shall be
+         printed (and nothing else).  Otherwise, information such as the
+         Euclidean norm of the gradient and the length of the step along the
+         search direction can be retrieved with `opt.get_gnorm()` or
+         `opt.get_step()`.
+
+     `fatol`, `frtol` - Relative function change tolerance for convergence
+         (default: 1.5e-8).
+
+     `gatol`, `grtol` - Absolute and relative gradient tolerances for
+         convergence which is assumed whenever the Euclidean norm of the
+         (projected) gradient is smaller or equal `max(gatol,grtol*ginit)`
+         where `ginit` is the Euclidean norm of the (projected) initial
+         gradient.  By default, `gatol=0` and `grtol=1e-6`.
+
+     `sftol`, `sgtol`, `sxtol` - Line search tolerance and safeguard
+         parameters.
+
+    """
+
+    # Starting variables.
+    x = np.array(x, copy=True, dtype=np.double, order='C')
+    f = np.empty(1, dtype=np.double, order='C')
+    #g = np.empty(x.shape, dtype=np.double, order='C')
+    freevars = None
+
+    # Create optimizer workspace with options.
+    opt = VMLMB(len(x), mem)
+    if fmin is not None: opt.set_fmin(fmin)
+    if frtol is not None: opt.set_frtol(frtol)
+    if fatol is not None: opt.set_fatol(fatol)
+    if grtol is not None: opt.set_grtol(grtol)
+    if gatol is not None: opt.set_gatol(gatol)
+    if sftol is not None: opt.set_sftol(sftol)
+    if sgtol is not None: opt.set_sgtol(sgtol)
+    if sxtol is not None: opt.set_sxtol(sxtol)
+
+    # Start iterations.
+    neval = 0 # number of objective function evaluations -- also given by
+              # opt.get_evaluations()
+    niter = 0 # number of algorithm iterations -- also given by
+              # opt.get_iterations()
+    task = opt.get_task()
+    stop = False
+    mesg = None
+    if verb > 0:
+        t0 = cputime()
+        printer(opt, x, 0.0, 0.0)
+    while True:
+        prnt = False
+        if task == TASK_FG:
+            if maxeval is not None and neval >= maxeval:
+                # Too many objective function evaluations.  We restore the
+                # variables at the start of the line search which is a cheap
+                # way (no extra memory cost) to recover variables which should
+                # be nearly the best ones.  We wait until last iteration
+                # information have been printed to stop the iterations.
+                mesg = 'too many function evaluations ({})'.format(neval)
+                stop = True
+                prnt = (verb > 0)
+                opt.restore(x, f, g)
+            else:
+                # Apply the bounds (if any), then compute the objective
+                # function and its gradient.
+                x = clamp(x, xmin, xmax)
+                (f[0],g) = fg(x)
+                neval += 1
+        elif task == TASK_FREEVARS:
+            # Determine the set of unbind variables.
+            freevars = get_free_variables(x, g, xmin, xmax)
+        elif task == TASK_NEWX:
+            # Line search has converged or objective function has been computed
+            # for the initial variables.  We may be interested in printing some
+            # information about the current iterate.
+            niter = opt.get_iterations()
+            if maxiter is not None and niter >= maxiter:
+                # Too many algorithm iterations.  See comments above in the
+                # case of too many evaluations.
+                mesg = 'too many iterations ({})'.format(niter)
+                stop = True
+                prnt = (verb > 0)
+            else:
+                prnt = (verb > 0 and (niter % verb) == 0)
+        else:
+            if task == TASK_CONV:
+                mesg = 'algorithm has converged'
+            elif task == TASK_WARN:
+                mesg = 'algorithm has warnings: ' + opt.get_reason()
+                opt.restore(x, f, g) # FIXME: is this needed?
+            elif task == TASK_ERROR:
+                # In case of more serious errors, we do not restore the best
+                # solution so far because it may be useful to examine the
+                # current variables to figure out the origin of the problem.
+                mesg = 'algorithm has errors: ' + opt.get_reason()
+            else:
+                mesg = 'illegal task value: ' + repr(task)
+            stop = True
+            prnt = (verb > 0)
+
+        if prnt:
+            printer(opt, x, f[0], cputime() - t0)
+        if stop:
+            if not quiet: print(mesg)
+            break
+
+        # Perform next algorithm step.
+        task = opt.iterate(x, f, g, freevars, h)
+
+    # Return the solution so far, the function value and the gradient.
+    return (x, f[0], g)
+
+#------------------------------------------------------------------------------
+# The following class encapsulates the low level interface to the
+#  VMLM-B algorithm in OptimPackLegacy library.
 
 cdef class VMLMB:
     """
