@@ -1,3 +1,12 @@
+## Version 1.5.0 (2019-XX-XX)
+
+* A Python interface to VMLM-B is provided (thanks to Romain Fetick).
+
+* Array dimensions and indices are now `long` by default.
+
+* Compilation and installation is much easier thanks to GNU-autoconf tools.
+
+
 ## Version 1.4.0 (2017-01-10)
 
 * VMLMB workspace is now a single opaque handle.  All needed data can be saved
@@ -16,6 +25,8 @@
   detriment of portability.
 
 * IDL port has been temporarily removed (will be back soon).
+
+* All functions, constants and macros prefixes become `opl_` or `OPL_`.
 
 
 ## Version 1.3.3 (2016-12-13)
@@ -49,18 +60,18 @@
   https://github.com/emmt/OptimPackLegacy
 
 
-**Version 1.3.2 (2010-05-07)**
+## Version 1.3.2 (2010-05-07)
 
 * Makefile fixed thanks to Michael Williamson.
 
 
-**Version 1.3.1 (2009-09-23)**
+## Version 1.3.1 (2009-09-23)
 
 * Bugs fixed in Yorick interface with the size of workspace arrays
   ISAVE and DSAVE.
 
 
-**Version 1.3.0 (2009-05-14)**
+## Version 1.3.0 (2009-05-14)
 
 * `fmin` is now an optional parameter.  Functions `op_get/set_fmin` and
   `op_vmlmb_first` have changed.  Accordingly, the Yorick interface have
@@ -69,10 +80,10 @@
 * IDL interface needs to be updated...
 
 
-**Version 1.2.0 (2008-01-31)**
+## Version 1.2.0 (2008-01-31)
 
 
-**Version 1.1.0 (2008-01-30)**
+## Version 1.1.0 (2008-01-30)
 
 * Yorick interface to OptimPack reworked.
 
@@ -91,4 +102,4 @@
   to support for Linux and 64 bit machines.
 
 
-**Version 1.0.0 (2003-04-22)**
+## Version 1.0.0 (2003-04-22)
