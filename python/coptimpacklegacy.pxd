@@ -1,9 +1,9 @@
 # -*- coding: utf-8; mode: python -*-
 """
-Cython file to provide a low-level Python interface to the OptimPacklegacy
+Cython file defining a low-level Python interface to the OptimPacklegacy
 library.
 
-@author: emmt
+@author: rfetick, emmt
 """
 
 cdef extern from "../src/optimpacklegacy.h":
