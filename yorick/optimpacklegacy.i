@@ -8,7 +8,7 @@
  * This file is part of OptimPackLegacy
  * <https://github.com/emmt/OptimPackLegacy>.
  *
- * Copyright (c) 2003-2009, 2016 Éric Thiébaut.
+ * Copyright (c) 2003-2021 Éric Thiébaut.
  *
  * OptimPackLegacy is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -132,16 +132,17 @@ extern opl_vmlmb_restart;
 /* DOCUMENT task = opl_vmlmb_restart(ws);
 
       Set VMLMB workspace WS so that it can be used for a new optimization with
-      the same parameters.
+      the same parameters.  The L-BFGS approximation of the Hessian and all
+      counters memorized in WS are reset.
 
    SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate.
 */
 
-func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
+func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
                verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
                frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)
-/* DOCUMENT opl_vmlmb(f, x);
-         or opl_vmlmb(f, x, fout, gout);
+/* DOCUMENT opl_vmlmb(f, x0);
+         or opl_vmlmb(f, x0, fout, gout);
 
      Returns a minimum of a multivariate function F by an iterative
      minimization algorithm (limited memory variable metric) possibly with
@@ -154,9 +155,8 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
              return fx; // return F(X)
          }
 
-     Argument X is the starting solution (a double precision floating point
-     array).  FOUT and GOUT are optional output variables to store the value of
-     F and its gradient at the minimum.
+     Argument X0 is the starting solution.  FOUT and GOUT are optional output
+     variables to store the value of F and its gradient at the minimum.
 
      If the multivariate function has more than one minimum, which minimum is
      returned is undefined (although it depends on the starting parameters X).
@@ -239,16 +239,16 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   use_extra = (! is_void(extra));
 
   /* Starting parameters. */
-  if ((s = structof(x)) != double && s != float && s != long &&
+  if ((s = structof(x0)) != double && s != float && s != long &&
       s != int && s != short && s != char) {
-    error, "expecting a numerical array for initial parameters X";
+    error, "expecting a numerical array for initial parameters X0";
   }
-  dims = dimsof(x);
+  dims = dimsof(x0);
 
   /* Bounds on parameters. */
   bounds = 0;
   if (! is_void(xmin)) {
-    if (is_void((t = dimsof(x, xmin))) || t(1) != dims(1)
+    if (is_void((t = dimsof(x0, xmin))) || t(1) != dims(1)
         || anyof(t != dims)) {
       error, "bad dimensions for lower bound XMIN";
     }
@@ -262,7 +262,7 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     bounds |= 1;
   }
   if (! is_void(xmax)) {
-    if (is_void((t = dimsof(x, xmax))) || t(1) != dims(1)
+    if (is_void((t = dimsof(x0, xmax))) || t(1) != dims(1)
         || anyof(t != dims)) {
       error, "bad dimensions for lower bound XMAX";
     }
@@ -316,12 +316,18 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   gtest = double(gatol);
 
   /* Choose minimization method. */
-  if (is_void(mem)) mem = min(numberof(x), 7);
+  if (is_void(mem)) mem = min(numberof(x0), 7);
   method_name = swrite(format="VMLMB %s bounds and MEM=%d",
                        (bounds != 0 ? "with" : "without"), mem);
   ws = opl_vmlmb_create(dims, mem, fmin=fmin,
                         fatol=fatol, frtol=frtol,
                         sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+
+  /* Initial iterate.  Force copy and conversion then free memory.  Do not use
+     somthing like `x = double(unref(x0))` as it may result in `x` being the
+     same array `x0` and thus impact the caller. */
+  x = double(x0); // force copy and conversion
+  x0 = [];        // free memory
 
   /* Start iterations. */
   task = 1;
@@ -333,9 +339,6 @@ func opl_vmlmb(f, x, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     cpu_start = elapsed(1);
     print_header = (! use_printer);
     last_print_iter = -1;
-  }
-  if (structof(x) != double) {
-    x = double(x);
   }
   local gx, gnorm, isfree, iter, step;
   task = ws.task;
