@@ -112,35 +112,5 @@ source directory of the plug-in).
 
 ## Portability Issues
 
-OptimPackLegacy is written in standard ANSI-C and should pose no problem of
-portability.  However, in order to match the data types used in your software,
-you may have to set the values of the following macros:
-
-    OPL_INTEGER = data type used to store array indices
-    OPL_LOGICAL = data type of the result of a logical test
-
-This must be  done *before* `optimpacklegacy.h` get included.   If these macros
-are not defined, the default assumed in `optimpacklegacy.h` is:
-
-    OPL_INTEGER = long
-    OPL_LOGICAL = int
-
-For instance, one should write:
-
-    #define OPL_INTEGER int64_t
-    #define OPL_LOGICAL int
-    #include "optimpacklegacy.h"
-    ...
-
-Of course, the installed OptimPackLegacy library must have been compiled with
-the correct data types.  Another possibility is to define these macros when
-calling CPP (the C preprocessor), *e.g.* in `src/Makefile`:
-
-     CPPFLAGS = -DOPL_INTEGER=int64_t -DOPL_LOGICAL=int -I.
-
-a final possibility is to edit `optimpacklegacy.h` and to adjust the default
-values of these macros (at the very beginning of this file).  If you plan to
-install in your system, the best is probably to fix the definitions in
-`optimpacklegacy.h`, then compile the library and finally install the library
-and the header file `optimpacklegacy.h` in proper system directories (*e.g.*
-with `make install PREFIX=...`).
+OptimPackLegacy is written in standard ANSI-C99 and should pose no problems of
+portability.

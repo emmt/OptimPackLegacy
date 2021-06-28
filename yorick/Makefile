@@ -57,7 +57,7 @@ PKG_EXENAME = yorick
 # `PKG_DEPLIBS=-Lsomedir -lsomelib` for dependencies of this package
 PKG_DEPLIBS =
 # set compiler (or rarely loader) flags specific to this package
-PKG_CFLAGS = -DOPL_INTEGER=long
+PKG_CFLAGS =
 PKG_LDFLAGS =
 
 # list of additional package names you want in PKG_EXENAME

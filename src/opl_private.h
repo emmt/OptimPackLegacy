@@ -9,7 +9,7 @@
  * This file is part of OptimPackLegacy
  * <https://github.com/emmt/OptimPackLegacy>.
  *
- * Copyright (c) 2003-2019, Éric Thiébaut.
+ * Copyright (c) 2003-2021, Éric Thiébaut.
  *
  * OptimPackLegacy is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -138,13 +138,13 @@ struct _opl_csrch_workspace {
  */
 struct _opl_vmlmb_workspace {
   opl_csrch_workspace_t lnsrch;
-  opl_integer_t n;
-  opl_integer_t m;
-  opl_integer_t mp;
-  opl_integer_t mark;
-  opl_integer_t evaluations;
-  opl_integer_t iterations;
-  opl_integer_t restarts;
+  long n;
+  long m;
+  long mp;
+  long mark;
+  long evaluations;
+  long iterations;
+  long restarts;
   int searching; /**< a line search is in progress */
   unsigned int flags;
   void (*free)(void*);

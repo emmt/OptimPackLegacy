@@ -8,7 +8,7 @@
  * This file is part of OptimPackLegacy
  * <https://github.com/emmt/OptimPackLegacy>.
  *
- * Copyright (c) 2003-2019, Éric Thiébaut.
+ * Copyright (c) 2003-2021, Éric Thiébaut.
  *
  * OptimPackLegacy is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -191,10 +191,6 @@ opl_csrch_iterate(opl_csrch_workspace_t* ws,
 # define stage   (ws->stage)
 # define brackt  (ws->brackt)
 
-  /* Local variables. */
-  double ftest, gtest, stp;
-  opl_status_t status;
-
   /* Minimal checking. */
   if (ws == NULL) {
     errno = EFAULT;
@@ -202,12 +198,12 @@ opl_csrch_iterate(opl_csrch_workspace_t* ws,
   }
 
   /* Initialize local variables. */
-  stp = *stp_ptr;
+  double stp = *stp_ptr;
 
   /* If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the algorithm enters
      the second stage. */
-  gtest = ftol*ginit;
-  ftest = finit + stp*gtest;
+  double gtest = ftol*ginit;
+  double ftest = finit + stp*gtest;
   if (stage == 1 && f <= ftest && g >= zero) {
     stage = 2;
   }
@@ -249,10 +245,10 @@ opl_csrch_iterate(opl_csrch_workspace_t* ws,
     double gym = gy - gtest;
 
     /* Call opl_cstep to update STX, STY, and to compute the new step. */
-    status = opl_cstep((opl_context_t*)ws, &brackt, stmin, stmax,
-                       &stx, &fxm, &gxm,
-                       &sty, &fym, &gym,
-                       &stp,  fm,   gm);
+    opl_status_t status = opl_cstep((opl_context_t*)ws, &brackt, stmin, stmax,
+                                    &stx, &fxm, &gxm,
+                                    &sty, &fym, &gym,
+                                    &stp,  fm,   gm);
     if (status != OPL_SUCCESS) {
       task = OPL_TASK_ERROR;
       return status;
@@ -267,10 +263,10 @@ opl_csrch_iterate(opl_csrch_workspace_t* ws,
   } else {
 
     /* Call opl_cstep to update STX, STY, and to compute the new step. */
-    status = opl_cstep((opl_context_t*)ws, &brackt, stmin, stmax,
-                       &stx, &fx, &gx,
-                       &sty, &fy, &gy,
-                       &stp,  f,   g);
+    opl_status_t status = opl_cstep((opl_context_t*)ws, &brackt, stmin, stmax,
+                                    &stx, &fx, &gx,
+                                    &sty, &fy, &gy,
+                                    &stp,  f,   g);
     if (status != OPL_SUCCESS) {
       task = OPL_TASK_ERROR;
       return status;
@@ -360,7 +356,7 @@ opl_cstep(opl_context_t* ctx, opl_boolean_t *brackt,
   double gamma, theta, p, q, r, s, t;
   double stpc; /* cubic step */
   double stpq; /* quadratic step */
-  double sgnd, stpf;
+  double stpf;
 
   /* Check the input parameters for errors. */
 # define REPORT(status, mesg)  opl_set_context(ctx, status,             \
@@ -378,7 +374,7 @@ opl_cstep(opl_context_t* ctx, opl_boolean_t *brackt,
 # undef REPORT
 
   /* Determine if the derivatives have opposite sign. */
-  sgnd = (dx/fabs(dx))*dp;
+  double sgnd = (dx/fabs(dx))*dp;
 
   if (fp > fx) {
     /* First case.  A higher function value.  The minimum is bracketed.  If the

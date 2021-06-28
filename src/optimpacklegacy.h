@@ -9,7 +9,7 @@
  * This file is part of OptimPackLegacy
  * <https://github.com/emmt/OptimPackLegacy>.
  *
- * Copyright (c) 2003-2019, Éric Thiébaut.
+ * Copyright (c) 2003-2021, Éric Thiébaut.
  *
  * OptimPackLegacy is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -31,22 +31,6 @@
 
 #ifndef _OPTIMPACKLEGACY_H
 #define _OPTIMPACKLEGACY_H 1
-
-/**
- * Customizable data types:
- *   OPL_INTEGER = data type used to store array indices
- *   OPL_LOGICAL = data type of the result of a logical test
- */
-#ifndef OPL_INTEGER
-# define OPL_INTEGER long
-#endif
-#ifndef OPL_LOGICAL
-# define OPL_LOGICAL int
-#endif
-
-typedef OPL_INTEGER opl_integer_t;
-typedef OPL_LOGICAL opl_logical_t;
-
 
 /*---------------------------------------------------------------------------*/
 /* USEFUL MACROS */
@@ -106,16 +90,6 @@ typedef enum {
   OPL_OUT_OF_BOUNDS,
   OPL_CORRUPTED,
   OPL_OVERFLOW,
-#if 0
-  OPL_SYNTAX_ERROR,
-  OPL_OPEN_ERROR,
-  OPL_CLOSE_ERROR,
-  OPL_READ_ERROR,
-  OPL_WRITE_ERROR,
-  OPL_STAT_ERROR,
-  OPL_FILE_EXISTS,
-  OPL_ZIP_ERROR,
-#endif
   OPL_SYSTEM_ERROR   /* System error, use errno code. */
 } opl_status_t;
 
@@ -637,7 +611,7 @@ typedef struct _opl_vmlmb_workspace opl_vmlmb_workspace_t;
  *         returned if the arguments are invalid (not strictly positive).
  */
 extern size_t
-opl_vmlmb_monolithic_workspace_size(opl_integer_t n, opl_integer_t m);
+opl_vmlmb_monolithic_workspace_size(long n, long m);
 
 /**
  * Initialize a workspace allocated as one block.
@@ -655,13 +629,13 @@ opl_vmlmb_monolithic_workspace_size(opl_integer_t n, opl_integer_t m);
  */
 extern opl_vmlmb_workspace_t*
 opl_vmlmb_monolithic_workspace_init(void* buf,
-                                    opl_integer_t n, opl_integer_t m);
+                                    long n, long m);
 
 extern opl_vmlmb_workspace_t*
 opl_vmlmb_set_defaults(opl_vmlmb_workspace_t* ws);
 
 extern opl_vmlmb_workspace_t*
-opl_vmlmb_create(opl_integer_t n, opl_integer_t m);
+opl_vmlmb_create(long n, long m);
 
 extern void
 opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
@@ -761,14 +735,15 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *   TASK is the value returned opl_vmlmb_iterate.  It
  *       can have one of the following values:
  *
- *           OPL_TASK_FG - caller must evaluate the function and gradient at X
- *               and call opl_vmlm_next.
+ *           OPL_TASK_FG - Caller must evaluate the function and gradient at X
+ *               and call opl_vmlmb_iterate().  If constraints apply, the
+ *               variables must be made feasible (in-place).
  *
- *           OPL_TASK_FREEVARS - if variables are bounded, caller must
+ *           OPL_TASK_FREEVARS - If variables are bounded, caller must
  *               determine the set of free variables for the current variables
  *               X and update IFREE accordingly.
  *
- *           OPL_TASK_NEWX - a new iterate has been computed.  The
+ *           OPL_TASK_NEWX - A new iterate has been computed.  The
  *               approximation X, function F, and gradient G are available for
  *               examination.
  *
@@ -780,7 +755,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *               approximation found so far.  Warning message is given by
  *               opl_vmlmb_get_reason(ws).
  *
- *           OPL_TASK_ERROR then there is an error in the input arguments.
+ *           OPL_TASK_ERROR - There is an error in the input arguments.
  *               Error message is given by opl_vmlmb_get_reason(ws).
  *
  * The caller must not modify the workspace array WS between calls to
@@ -897,7 +872,7 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
 extern opl_task_t
 opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
                   double x[], double *f, double g[],
-                  opl_logical_t isfree[], const double h[]);
+                  int isfree[], const double h[]);
 
 /* Set workspace data so that it can be used for a new optimization with
    the same parameters. */
@@ -955,10 +930,10 @@ opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value);
  *         function.  A NaN value is returned if there is no such bound or in
  *         case of error (i.e. `ws` is `NULL`).
  */
-extern opl_integer_t
+extern long
 opl_vmlmb_get_n(opl_vmlmb_workspace_t* ws);
 
-extern opl_integer_t
+extern long
 opl_vmlmb_get_m(opl_vmlmb_workspace_t* ws);
 
 extern double
@@ -1001,9 +976,9 @@ extern double opl_vmlmb_get_delta(opl_vmlmb_workspace_t* ws);
 extern double opl_vmlmb_get_step(opl_vmlmb_workspace_t* ws);
 extern double opl_vmlmb_get_gnorm(opl_vmlmb_workspace_t* ws);
 
-extern opl_integer_t opl_vmlmb_get_evaluations(opl_vmlmb_workspace_t* ws);
-extern opl_integer_t opl_vmlmb_get_iterations(opl_vmlmb_workspace_t* ws);
-extern opl_integer_t opl_vmlmb_get_restarts(opl_vmlmb_workspace_t* ws);
+extern long opl_vmlmb_get_evaluations(opl_vmlmb_workspace_t* ws);
+extern long opl_vmlmb_get_iterations(opl_vmlmb_workspace_t* ws);
+extern long opl_vmlmb_get_restarts(opl_vmlmb_workspace_t* ws);
 /*	Query values of current step size along search direction, curent
 	iteration number. */
 
@@ -1014,14 +989,14 @@ extern opl_integer_t opl_vmlmb_get_restarts(opl_vmlmb_workspace_t* ws);
 /*---------------------------------------------------------------------------*/
 /* APPLY BOUND CONSTRAINTS */
 
-extern void opl_bounds_apply(opl_integer_t n, double x[],
+extern void opl_bounds_apply(long n, double x[],
                              const double xmin[], const double xmax[]);
 /*	Apply bounds constraints to array X.  Input/output array X has N
 	elements, XMIN must have N elements (the lower bounds of X) or be
 	NULL (no lower bounds), similarly XMAX must have N elements (the
 	upper bounds of X) or be NULL (no upper bounds). */
 
-extern void opl_bounds_free(opl_integer_t n, opl_logical_t isfree[],
+extern void opl_bounds_free(long n, int isfree[],
                             const double x[], const double g[],
                             const double xmin[], const double xmax[]);
 /*	Set elements of ISFREE to true or false whether the corresponding
@@ -1033,7 +1008,7 @@ extern void opl_bounds_free(opl_integer_t n, opl_logical_t isfree[],
 
 	  (X[i] > XMIN[i] || G[i] < 0) && (X[i] < XMAX[i] || G[i] > 0) */
 
-extern opl_integer_t opl_bounds_check(opl_integer_t n, const double xmin[],
+extern long opl_bounds_check(long n, const double xmin[],
                                       const double xmax[]);
 /*	Check correctness of bounds XMIN and XMAX (see opl_bounds_apply for
 	the definition of the arguments).  This function returns -1 if the
@@ -1041,22 +1016,22 @@ extern opl_integer_t opl_bounds_check(opl_integer_t n, const double xmin[],
 	otherwise, the function return the value i of the first index (i >=
 	0) for which the condition is violated. */
 
-extern void opl_lower_bound_apply(opl_integer_t n, double x[], double xmin);
-extern void opl_lower_bound_free(opl_integer_t n, opl_logical_t isfree[],
+extern void opl_lower_bound_apply(long n, double x[], double xmin);
+extern void opl_lower_bound_free(long n, int isfree[],
                                  const double x[], const double g[],
                                  double xmin);
 /*	These routines are similar to opl_bounds_apply and opl_bounds_free but
 	for a scalar lower bound XMIN that is the same for all parameters X. */
 
-extern void opl_upper_bound_apply(opl_integer_t n, double x[], double xmax);
-extern void opl_upper_bound_free(opl_integer_t n, opl_logical_t isfree[],
+extern void opl_upper_bound_apply(long n, double x[], double xmax);
+extern void opl_upper_bound_free(long n, int isfree[],
                                  const double x[], const double g[],
                                  double xmax);
 /*	These routines are similar to opl_bounds_apply and opl_bounds_free but
 	for a scalar upper bound XMAX that is the same for all parameters X. */
 
-extern void opl_interval_apply(opl_integer_t n, double x[], double a, double b);
-extern void opl_interval_free(opl_integer_t n, opl_logical_t isfree[],
+extern void opl_interval_apply(long n, double x[], double a, double b);
+extern void opl_interval_free(long n, int isfree[],
                               const double x[], const double g[],
                               double a, double b);
 /*	These routines are similar to opl_bounds_apply and opl_bounds_free
@@ -1066,48 +1041,48 @@ extern void opl_interval_free(opl_integer_t n, opl_logical_t isfree[],
 /*---------------------------------------------------------------------------*/
 /* UTILITIES */
 
-extern double opl_dnrm2(opl_integer_t n, const double x[]);
+extern double opl_dnrm2(long n, const double x[]);
 /* Returns the Euclidian norm of X: sqrt(X'.X), taking care of overflows. */
 
 
-extern void opl_dcopy(opl_integer_t n, const double x[], double y[]);
-extern void opl_dcopy_free(opl_integer_t n, const double x[],
-                           double y[], const opl_logical_t isfree[]);
+extern void opl_dcopy(long n, const double x[], double y[]);
+extern void opl_dcopy_free(long n, const double x[],
+                           double y[], const int isfree[]);
 /* Copy elements of X into Y.  Does Y[i] = X[i] for i=0,...,N-1.  If ISFREE
    is non-NULL, only elements for which ISFREE[i] is true (non-zero) are
    taken into account. */
 
-extern void opl_daxpy(opl_integer_t n, double a,
+extern void opl_daxpy(long n, double a,
 		     const double x[], double y[]);
-extern void opl_daxpy_free(opl_integer_t n, double a,
+extern void opl_daxpy_free(long n, double a,
                            const double x[], double y[],
-                           const opl_logical_t isfree[]);
+                           const int isfree[]);
 /* Does Y[i] += A*X[i] for i=0,...,N-1.  If ISFREE is non-NULL, only
    elements for which ISFREE[i] is true (non-zero) are taken into
    account. */
 
-extern double opl_ddot(opl_integer_t n, const double x[], const double y[]);
-extern double opl_ddot_free(opl_integer_t n, const double x[],
-                            const double y[], const opl_logical_t isfree[]);
+extern double opl_ddot(long n, const double x[], const double y[]);
+extern double opl_ddot_free(long n, const double x[],
+                            const double y[], const int isfree[]);
 /* Computes dot product of N-element vectors X and Y. If ISFREE is
    non-NULL, only elements for which ISFREE[i] is true (non-zero) are taken
    into account. */
 
-extern void opl_dscal(opl_integer_t n, double a, double x[]);
+extern void opl_dscal(long n, double a, double x[]);
 /* Scales N-element vector X by scalar A. */
 
 /*---------------------------------------------------------------------------*/
 /* YORICK-LIKE ROUTINES */
 
-extern int opl_anyof(opl_integer_t n, const double x[]);
+extern int opl_anyof(long n, const double x[]);
 /* Returns true (non-zero) if any element of X is non-zero; returns faslse
    (zero) otherwise. N is the number of elements of X. */
 
-extern int opl_noneof(opl_integer_t n, const double x[]);
+extern int opl_noneof(long n, const double x[]);
 /* Returns true (non-zero) if all elements of X are zero; returns faslse
    (zero) otherwise. N is the number of elements of X. */
 
-extern int opl_allof(opl_integer_t n, const double x[]);
+extern int opl_allof(long n, const double x[]);
 /* Returns true (non-zero) if all elements of X are non-zero; returns faslse
    (zero) otherwise. N is the number of elements of X. */
 

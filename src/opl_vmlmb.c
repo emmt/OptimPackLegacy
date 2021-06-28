@@ -9,7 +9,7 @@
  * This file is part of OptimPackLegacy
  * <https://github.com/emmt/OptimPackLegacy>.
  *
- * Copyright (c) 2003-2019, Éric Thiébaut.
+ * Copyright (c) 2003-2021, Éric Thiébaut.
  *
  * OptimPackLegacy is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -60,11 +60,14 @@ typedef unsigned char byte_t;
  *   const double Inf = INFINITY;
  *   #end
  */
-static const double zero = 0.0;
-static const double one = 1.0;
-static const double NaN = 0.0/0.0;
+#if __STDC_VERSION__ >= 199901L /* C99 */
+#  define CHOICE_(a, b) a
+#else                       /* not C99 */
+#  define CHOICE_(a, b) b
+#endif
+static const double NaN = CHOICE_(NAN, 0.0/0.0);
 #if 0 /* not used */
-static const double Inf = 1.0/0.0;
+static const double Inf = CHOICE_(INFINITY, 1.0/0.0);
 #endif
 
 /* Default settings. */
@@ -108,7 +111,7 @@ static double max(double a, double b) {
 /* Apply L-BFGS recursion to compute search direction. */
 static void
 compute_direction(opl_vmlmb_workspace_t* ws, double d[],
-                  const opl_logical_t isfree[], const double h[]);
+                  const int isfree[], const double h[]);
 
 /* Compute next step and set task. */
 static opl_task_t
@@ -117,7 +120,7 @@ next_step(opl_vmlmb_workspace_t* ws, double x[]);
 /* Check H and ISFREE arrays, possibly fix ISFREE, returns non-zero
    in case of error. */
 static int
-check_free(opl_vmlmb_workspace_t* ws, opl_logical_t isfree[], const double h[]);
+check_free(opl_vmlmb_workspace_t* ws, int isfree[], const double h[]);
 
 /* Report a failure. */
 static opl_task_t
@@ -158,13 +161,13 @@ GET_MEMBER(double, sftol, SFTOL(ws), NaN);
 GET_MEMBER(double, sgtol, SGTOL(ws), NaN);
 GET_MEMBER(double, step, ws->stp, NaN);
 GET_MEMBER(double, gnorm, ws->gnorm, NaN);
-GET_MEMBER(opl_integer_t, n, ws->n, 0);
-GET_MEMBER(opl_integer_t, m, ws->m, 0);
+GET_MEMBER(long, n, ws->n, 0);
+GET_MEMBER(long, m, ws->m, 0);
 GET_MEMBER(opl_task_t, task, TASK(ws), OPL_TASK_ERROR);
 GET_MEMBER(opl_status_t, status, STATUS(ws), OPL_ILLEGAL_ADDRESS);
-GET_MEMBER(opl_integer_t, iterations, ws->iterations, -1);
-GET_MEMBER(opl_integer_t, evaluations, ws->evaluations, -1);
-GET_MEMBER(opl_integer_t, restarts, ws->restarts, -1);
+GET_MEMBER(long, iterations, ws->iterations, -1);
+GET_MEMBER(long, evaluations, ws->evaluations, -1);
+GET_MEMBER(long, restarts, ws->restarts, -1);
 GET_MEMBER(const char*, reason, opl_get_message(&CONTEXT(ws)), NULL);
 
 #undef GET_MEMBER
@@ -201,13 +204,13 @@ opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value)
     return OPL_SUCCESS;                                         \
   }
 
-SET_MEMBER(fatol, ws->fatol, value < 0.0);
-SET_MEMBER(frtol, ws->frtol, value < 0.0);
-SET_MEMBER(delta, ws->delta, value < 0.0);
-SET_MEMBER(epsilon, ws->epsilon, value < 0.0);
-SET_MEMBER(sxtol, SXTOL(ws), value <= 0.0 || value >= 1.0);
-SET_MEMBER(sftol, SFTOL(ws), value <= 0.0 || value >= 1.0);
-SET_MEMBER(sgtol, SGTOL(ws), value <= 0.0 || value >= 1.0);
+SET_MEMBER(fatol, ws->fatol, value < 0);
+SET_MEMBER(frtol, ws->frtol, value < 0);
+SET_MEMBER(delta, ws->delta, value < 0);
+SET_MEMBER(epsilon, ws->epsilon, value < 0);
+SET_MEMBER(sxtol, SXTOL(ws), value <= 0 || value >= 1);
+SET_MEMBER(sftol, SFTOL(ws), value <= 0 || value >= 1);
+SET_MEMBER(sgtol, SGTOL(ws), value <= 0 || value >= 1);
 
 #undef SET_MEMBER
 
@@ -224,14 +227,14 @@ opl_vmlmb_restart(opl_vmlmb_workspace_t* ws)
   ws->mark = -1;
   ws->mp = 0;
   ws->searching = OPL_FALSE;
-  ws->f0 = 0.0;
-  ws->gd = 0.0;
-  ws->g0d = 0.0;
-  ws->stp = 0.0;
-  STPMIN(ws) = 0.0;
-  STPMAX(ws) = 0.0;
-  ws->gnorm = -1.0;
-  ws->g0norm = -1.0;
+  ws->f0 = 0;
+  ws->gd = 0;
+  ws->g0d = 0;
+  ws->stp = 0;
+  STPMIN(ws) = 0;
+  STPMAX(ws) = 0;
+  ws->gnorm = -1;
+  ws->g0norm = -1;
   return success(ws, OPL_TASK_FG, "compute f(x) and g(x)");
 }
 
@@ -270,17 +273,15 @@ opl_vmlmb_restore(opl_vmlmb_workspace_t* ws,
 opl_task_t
 opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
                   double x[], double *f, double g[],
-                  opl_logical_t isfree[], const double h[])
+                  int isfree[], const double h[])
 {
   /* Local variables. */
   double stpmax;
-  opl_integer_t m = ws->m;
-  opl_integer_t n = ws->n;
+  long m = ws->m;
+  long n = ws->n;
   double* d = ws->d;
   double** S_ = ws->S;
   double** Y_ = ws->Y;
-  double *Sm, *Ym;
-  opl_integer_t i;
   int have_fmin = ((ws->flags & FLAG_FMIN) != 0);
 
 # define S(j) S_[j]
@@ -339,38 +340,43 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
     }
     opl_dcopy_free(n, g, d, isfree);
     ws->gnorm = opl_dnrm2(n, d);
-    if (ws->gnorm == zero) {
+    if (ws->gnorm == 0) {
       return success(ws, OPL_TASK_CONV, "local minimum found");
     }
     if (ws->evaluations > 1) {
       /* Update L-BFGS model. (We always compute the effective step to account
          for bound constraints and, at least, numerical rounding or truncation
          errors.) */
-      double fchange, snorm = zero, ynorm = zero;
-      for (Sm = S(ws->mark), i = 0; i < n; ++i) {
-        Sm[i] -= x[i];
-        snorm += Sm[i]*Sm[i];
+      double* Smark = S(ws->mark);
+      double sts = 0;
+      for (long i = 0; i < n; ++i) {
+        double s = Smark[i] - x[i];
+        Smark[i] = s;
+        sts += s*s;
       }
-      for (Ym = Y(ws->mark), i = 0; i < n; ++i) {
-        Ym[i] -= g[i];
-        ynorm += Ym[i]*Ym[i];
-      }
-      if (isfree == NULL) {
-        /* FIXME: compute GAMMA? */
-        ws->rho[ws->mark] = opl_ddot(n, Y(ws->mark), S(ws->mark));
+      double* Ymark = Y(ws->mark);
+      double yty = 0;
+      for (long i = 0; i < n; ++i) {
+        double y = Ymark[i] - g[i];
+        Ymark[i] = y;
+        yty += y*y;
       }
       if (ws->mp < m) {
         ++ws->mp;
       }
-
-      /* Test for global convergence. */
-      if (snorm <= zero) {
+      if (sts <= 0) {
         return success(ws, OPL_TASK_WARN, "no parameter change");
       }
-      if (ynorm <= zero) {
+      if (yty <= 0) {
         return success(ws, OPL_TASK_WARN, "no gradient change");
       }
-      fchange = max(fabs(*f - ws->f0), fabs(ws->stp*ws->g0d));
+      if (isfree == NULL) {
+        double sty = opl_ddot(n, Smark, Ymark);
+        ws->rho[ws->mark] = sty;
+      }
+
+      /* Test for global convergence. */
+      double fchange = max(fabs(*f - ws->f0), fabs(ws->stp*ws->g0d));
       if (fchange <= ws->frtol*fabs(ws->f0)) {
         return success(ws, OPL_TASK_CONV, "FRTOL test satisfied");
       }
@@ -396,11 +402,11 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
            direction.  If L-BFGS recursion failed to produce a sufficient
            descent search direction, the algorithm is restarted with the
            steepest descent. */
-        ws->stp = 1.0;
+        ws->stp = 1;
         ws->gd = -opl_ddot(n, g, d);
-        if (ws->epsilon > zero ?
+        if (ws->epsilon > 0 ?
             (ws->gd > -ws->epsilon*ws->gnorm*opl_dnrm2(n, d)) :
-            (ws->gd >= zero)) {
+            (ws->gd >= 0)) {
           /* Insufficient descent direction.  Manage to restart the L-BFGS with
              steepest descent. */
           ws->mp = 0;
@@ -419,26 +425,26 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
          the (projected) gradient. */
       if (h != NULL) {
         /* Use diagonal preconditioner to compute initial search direction. */
-        for (i = 0; i < n; ++i) {
+        for (long i = 0; i < n; ++i) {
           d[i] *= h[i];
         }
-        ws->stp = 1.0;
+        ws->stp = 1;
         ws->gd = -opl_ddot(n, g, d);
-        if (ws->gd >= zero) {
+        if (ws->gd >= 0) {
           return failure(ws, OPL_NOT_POSITIVE_DEFINITE,
                          "preconditioner is not positive definite");
         }
       } else {
         /* No preconditioning, use a small step along the steepest descent. */
-        if (ws->delta > zero) {
+        if (ws->delta > 0) {
           ws->stp = (opl_dnrm2(n, x)/ws->gnorm)*ws->delta;
         } else {
-          ws->stp = zero;
+          ws->stp = 0;
         }
-        if (ws->stp <= zero) {
+        if (ws->stp <= 0) {
           /* The following step length is quite arbitrary but to avoid this
              would require to know the typical size of the variables. */
-          ws->stp = one/ws->gnorm;
+          ws->stp = 1.0/ws->gnorm;
         }
         ws->gd = -ws->gnorm*ws->gnorm;
       }
@@ -461,8 +467,8 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
       stpmax = (ws->fmin - ws->f0)/(SGTOL(ws)*ws->g0d);
     } else {
       double temp = fabs(ws->f0);
-      if (temp < 1.0) {
-	temp = 1.0;
+      if (temp < 1) {
+	temp = 1;
       }
       stpmax = temp/(SGTOL(ws)*ws->g0d);
     }
@@ -470,7 +476,7 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
     ws->stp = min(ws->stp, stpmax);
     opl_csrch_start(&ws->lnsrch, *f, ws->gd, ws->stp,
                     SFTOL(ws), SGTOL(ws), SXTOL(ws),
-                    zero, stpmax);
+                    0, stpmax);
     if (TASK(ws) != OPL_TASK_FG) {
       /* Some error occurred (task and context should have been set so as to
          describe the problem). */
@@ -538,14 +544,13 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
  */
 static void
 compute_direction(opl_vmlmb_workspace_t* ws, double d[],
-                  const opl_logical_t isfree[], const double h[])
+                  const int isfree[], const double h[])
 {
-  double gamma = zero;
-  opl_integer_t m = ws->m;
-  opl_integer_t mp = ws->mp;
-  opl_integer_t n = ws->n;
-  opl_integer_t off = ws->mark + m + 1;
-  opl_integer_t i, j, k;
+  double gamma = 0;
+  long m = ws->m;
+  long mp = ws->mp;
+  long n = ws->n;
+  long off = ws->mark + m + 1;
   double* rho = ws->rho;
   double* alpha = ws->alpha;
   double** S_ = ws->S;
@@ -555,17 +560,17 @@ compute_direction(opl_vmlmb_workspace_t* ws, double d[],
 # define Y(j) Y_[j]
 
   /* First loop of the L-BFGS recursion. */
-  for (k = 1; k <= mp; ++k) {
-    j = (off - k)%m;
+  for (long k = 1; k <= mp; ++k) {
+    long j = (off - k)%m;
     if (isfree != NULL) {
       rho[j] = opl_ddot_free(n, S(j), Y(j), isfree);
     }
-    if (rho[j] > zero) {
+    if (rho[j] > 0) {
       alpha[j] = opl_ddot(n, S(j), d)/rho[j];
       opl_daxpy_free(n, -alpha[j], Y(j), d, isfree);
-      if (gamma <= zero) {
+      if (gamma <= 0) {
         double yty = opl_ddot_free(n, Y(j), Y(j), isfree);
-        if (yty > zero) {
+        if (yty > 0) {
           gamma = rho[j]/yty;
         }
       }
@@ -575,10 +580,10 @@ compute_direction(opl_vmlmb_workspace_t* ws, double d[],
   /* Apply initial approximation of the inverse Hessian. */
   if (h != NULL) {
     /* Apply diagonal preconditioner. */
-    for (i = 0; i < n; ++i) {
+    for (long i = 0; i < n; ++i) {
       d[i] *= h[i];
     }
-  } else if (gamma > zero) {
+  } else if (gamma > 0) {
     /* Apply initial H (i.e. just scale D) and perform the second stage of
        the 2-loop recursion. */
     opl_dscal(n, gamma, d);
@@ -591,9 +596,9 @@ compute_direction(opl_vmlmb_workspace_t* ws, double d[],
   }
 
   /* Second loop of the L-BFGS recursion. */
-  for (k = mp; k >= 1; --k) {
-    j = (off - k)%m;
-    if (rho[j] > zero) {
+  for (long k = mp; k >= 1; --k) {
+    long j = (off - k)%m;
+    if (rho[j] > 0) {
       double beta = opl_ddot(n, Y(j), d)/rho[j];
       opl_daxpy_free(n, alpha[j] - beta, S(j), d, isfree);
     }
@@ -610,10 +615,10 @@ next_step(opl_vmlmb_workspace_t* ws, double x[])
   double stp = ws->stp;
   const double* d = ws->d;
   const double* x0 = ws->S[ws->mark];
-  opl_integer_t i, n = ws->n;
+  long n = ws->n;
 
   /* Compute the new iterate. */
-  for (i = 0; i < n; ++i) {
+  for (long i = 0; i < n; ++i) {
     x[i] = x0[i] - stp*d[i];
   }
 
@@ -622,22 +627,22 @@ next_step(opl_vmlmb_workspace_t* ws, double x[])
 }
 
 static int
-check_free(opl_vmlmb_workspace_t* ws, opl_logical_t isfree[],
+check_free(opl_vmlmb_workspace_t* ws, int isfree[],
            const double h[])
 {
   if (h != NULL) {
-    const double zero = 0.0;
-    opl_integer_t i, n = ws->n;
+    const double zero = 0;
+    long n = ws->n;
     if (isfree != NULL) {
       /* fix ISFREE array */
-      for (i = 0; i < n; ++i) {
+      for (long i = 0; i < n; ++i) {
 	if (isfree[i] && h[i] <= zero) {
 	  isfree[i] = 0;
 	}
       }
     } else {
       /* check that H is positive definite */
-      for (i = 0; i < n; ++i) {
+      for (long i = 0; i < n; ++i) {
 	if (h[i] <= zero) {
           failure(ws, OPL_NOT_POSITIVE_DEFINITE,
                   "initial inverse Hessian is not positive definite");
@@ -679,7 +684,7 @@ static size_t number_of_reals(size_t n, size_t m)
 }
 
 size_t
-opl_vmlmb_monolithic_workspace_size(opl_integer_t n, opl_integer_t m)
+opl_vmlmb_monolithic_workspace_size(long n, long m)
 {
   if (n <= 0 || m <= 0) {
     errno = EINVAL;
@@ -689,13 +694,8 @@ opl_vmlmb_monolithic_workspace_size(opl_integer_t n, opl_integer_t m)
 }
 
 opl_vmlmb_workspace_t*
-opl_vmlmb_monolithic_workspace_init(void* buf, opl_integer_t n, opl_integer_t m)
+opl_vmlmb_monolithic_workspace_init(void* buf, long n, long m)
 {
-  size_t offset2, size;
-  opl_integer_t k;
-  opl_vmlmb_workspace_t* ws;
-  double* arr;
-
   /* Check arguments. */
   if (buf == NULL) {
     if (errno != ENOMEM) {
@@ -709,12 +709,12 @@ opl_vmlmb_monolithic_workspace_init(void* buf, opl_integer_t n, opl_integer_t m)
   }
 
   /* Compute offsets and size.  Clear buffer. */
-  offset2 = workspace_offset2(m);
-  size = offset2 + number_of_reals(n, m)*sizeof(double);
+  size_t offset2 = workspace_offset2(m);
+  size_t size = offset2 + number_of_reals(n, m)*sizeof(double);
   memset(buf, 0, size);
 
   /* Instanciate workspace. */
-  ws = (opl_vmlmb_workspace_t*)buf;
+  opl_vmlmb_workspace_t* ws = (opl_vmlmb_workspace_t*)buf;
   ws->m = m;
   ws->n = n;
   ws->S = (double**)((byte_t*)ws + offset1);
@@ -722,8 +722,8 @@ opl_vmlmb_monolithic_workspace_init(void* buf, opl_integer_t n, opl_integer_t m)
   ws->alpha = (double*)((byte_t*)ws + offset2);
   ws->rho = ws->alpha + m;
   ws->d = ws->rho + m;
-  arr = ws->d;
-  for (k = 0; k < m; ++k) {
+  double* arr = ws->d;
+  for (long k = 0; k < m; ++k) {
     ws->S[k] = (arr += n);
     ws->Y[k] = (arr += n);
   }
@@ -749,14 +749,14 @@ static void
 free_split_workspace(void* ptr)
 {
   opl_vmlmb_workspace_t* ws = (opl_vmlmb_workspace_t*)ptr;
-  opl_integer_t k, m = ws->m;
+  long m = ws->m;
   double* tmp;
 
   if ((tmp = ws->d) != NULL) {
     ws->d = NULL;
     free(tmp);
   }
-  for (k = 0; k < m; ++k) {
+  for (long k = 0; k < m; ++k) {
     if ((tmp = ws->S[k]) != NULL) {
       ws->S[k] = NULL;
       free(tmp);
@@ -770,12 +770,8 @@ free_split_workspace(void* ptr)
 }
 
 opl_vmlmb_workspace_t*
-opl_vmlmb_create(opl_integer_t n, opl_integer_t m)
+opl_vmlmb_create(long n, long m)
 {
-  size_t offset2, size;
-  opl_integer_t k;
-  opl_vmlmb_workspace_t* ws;
-
   if (n <= 0 || m <= 0) {
     errno = EINVAL;
     return 0;
@@ -783,8 +779,9 @@ opl_vmlmb_create(opl_integer_t n, opl_integer_t m)
   if (m*n <= 10000) {
     /* For small problems, the workspace is allocated as a single block of
        memory. */
-    size = opl_vmlmb_monolithic_workspace_size(n, m);
-    ws = opl_vmlmb_monolithic_workspace_init(malloc(size), n, m);
+    size_t size = opl_vmlmb_monolithic_workspace_size(n, m);
+    opl_vmlmb_workspace_t* ws = opl_vmlmb_monolithic_workspace_init(
+      malloc(size), n, m);
     if (ws == NULL) {
       return NULL;
     }
@@ -794,9 +791,9 @@ opl_vmlmb_create(opl_integer_t n, opl_integer_t m)
     /* For larger problems, the philosophy is to store the workspace structure
        and related small arrays in a single block of memory, while larger
        arrays (d, S and Y) are stored separately. */
-    offset2 = workspace_offset2(m);
-    size = offset2 + 2*m*sizeof(double);
-    ws = (opl_vmlmb_workspace_t*)malloc(size);
+    size_t offset2 = workspace_offset2(m);
+    size_t size = offset2 + 2*m*sizeof(double);
+    opl_vmlmb_workspace_t* ws = (opl_vmlmb_workspace_t*)malloc(size);
     if (ws == NULL) {
       return NULL;
     }
@@ -813,7 +810,7 @@ opl_vmlmb_create(opl_integer_t n, opl_integer_t m)
       opl_vmlmb_destroy(ws);
       return NULL;
     }
-    for (k = 0; k < m; ++k) {
+    for (long k = 0; k < m; ++k) {
       if ((ws->S[k] = NEW(double, n)) == NULL ||
           (ws->Y[k] = NEW(double, n)) == NULL) {
         goto destroy;
