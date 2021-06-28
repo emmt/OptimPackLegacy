@@ -1,14 +1,11 @@
 % function m_opl_vmlmb_get_reason
 %
-%  str = m_opl_vmlmb_get_reason(ws));
+%     str = m_opl_vmlmb_get_reason(ws);
 %
-%  Query the reason of the last stop of VMLMB.
+% Query the reason of the last stop of VMLM-B.
 %
-% See optimpacklegacy for explaination about VMLMB algorithm and its
+% See OptimPackLegacy for explaination about VMLMB algorithm and its
 % parameters
-%
-%	Definitions for optimization routines implemented in OptimPack
-%	library.
 %
 %-----------------------------------------------------------------------------
 %
@@ -30,4 +27,3 @@
 %	along with OptimPack (file  "LICENSE" in the top source directory);
 %	if  not, write  to the  Free Software  Foundation, Inc.,  59 Temple
 %	Place, Suite 330, Boston, MA 02111-1307 USA
-

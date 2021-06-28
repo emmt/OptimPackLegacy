@@ -1,4 +1,4 @@
-/* 
+/*
  *  m_opl_vmlmb_get_reason.c
  *
  * function m_opl_vmlmb_get_reason
@@ -29,27 +29,18 @@
 ws = opl_vmlmb_create(dims, mem, fmin=fmin,fatol=fatol, frtol=frtol,sftol=sftol, sgtol=sgtol, sxtol=sxtol);
 */
 
-#include <errno.h>
-
 #include "mex.h"
 #include "optimpacklegacy.h"
 
-#define TRUE  1
-#define FALSE 0
-
-void mexFunction( int nlhs, mxArray *plhs[],    
-                  int nrhs, const mxArray *prhs[] )
+void mexFunction(int nlhs, mxArray *plhs[],
+                 int nrhs, const mxArray *prhs[] )
 {
-  opl_vmlmb_workspace_t* ws;
-  
   if (nrhs != 1) {
     mexErrMsgTxt("expecting 1 argument");
   }
   if (nlhs != 1) {
-        mexErrMsgTxt("1 output argument allowed."); 
-  } 
-  
-  ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
- 
+    mexErrMsgTxt("1 output argument allowed");
+  }
+  opl_vmlmb_workspace_t* ws = (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]);
   plhs[0] = mxCreateString(opl_vmlmb_get_reason(ws));
 }
