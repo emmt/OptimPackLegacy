@@ -29,7 +29,8 @@
  */
 
 #include <errno.h>
-#include<string.h>
+#include <string.h>
+#include <stdint.h>
 
 #include "mex.h"
 #include "optimpacklegacy.h"
@@ -37,54 +38,49 @@
 #define TRUE  1
 #define FALSE 0
 
-void mexFunction( int nlhs, mxArray *plhs[],
-        int nrhs, const mxArray *prhs[] )
+void mexFunction(int nlhs, mxArray *plhs[],
+                 int nrhs, const mxArray *prhs[])
 {
-    double *f;
-    
+    double* f;
     int* isfree;
     double* x;
     double* g;
-    int  *task;
     opl_vmlmb_workspace_t* ws;
     long n, m;
-    
+
     if (nrhs != 4) {
-        mexErrMsgTxt("expecting between 4 arguments");
+        mexErrMsgTxt("expecting exactly 4 input arguments");
     }
     if (nlhs != 1) {
-        mexErrMsgTxt("1 output argument allowed.");
+        mexErrMsgTxt("1 output argument allowed");
     }
-    
-    ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
+
+    ws = (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
     n = opl_vmlmb_get_n(ws);   /* number of variable */
-    
+
     /* Control the input x */
     if ( !mxIsDouble(prhs[1]) || mxIsComplex(prhs[1]))
         mexErrMsgTxt("The second input x must be a real valued vector.");
     if (mxGetM(prhs[1])*mxGetN(prhs[1])!=n)
         mexErrMsgTxt("Incorrect dimension for the second input vector x");
     x = mxGetPr(prhs[1]);
-    
-    
+
     /* Control the input f */
     if (!mxIsDouble(prhs[2]) || !mxIsScalar(prhs[2])  || mxIsComplex(prhs[2]) )
         mexErrMsgTxt("The third input f must be a real valued scalar.");
     f = mxGetPr(prhs[2]);
-    
-    
+
     /* Control the input g */
     if (!mxIsDouble(prhs[3]) || mxIsComplex(prhs[3]) )
         mexErrMsgTxt("The fourth input g must be a real valued vector");
     if (mxGetM(prhs[3])*mxGetN(prhs[3])!=n)
         mexErrMsgTxt("Incorrect dimension for the fourth input vector g");
     g = mxGetPr(prhs[3]);
-    
-    
-    mwSize dims[]={1,1};
-    plhs[0] = mxCreateNumericArray(2,dims,mxINT16_CLASS,mxREAL);
-    task = (opl_integer_t *)mxGetPr(plhs[0]);  /* opl_integer_t are 16 bits integers */
-    
-    
-    task[0] = opl_vmlmb_restore( ws, x, f, g);
+
+    /* Retrieve the task value (assuming a 32-bit integer is large enough) and
+     * call the library function. */
+    mwSize dims[] = {1, 1};
+    plhs[0] = mxCreateNumericArray(2, dims, mxINT32_CLASS, mxREAL);
+    int32_t* task = (int32_t*)mxGetPr(plhs[0]);
+    task[0] = opl_vmlmb_restore(ws, x, f, g);
 }

@@ -26,10 +26,12 @@
  *	along with OptimPack (file  "LICENSE" in the top source directory);
  *	if  not, write  to the  Free Software  Foundation, Inc.,  59 Temple
  *	Place, Suite 330, Boston, MA 02111-1307 USA
+ *
  * ws = opl_vmlmb_create(dims, mem, fmin=fmin,fatol=fatol, frtol=frtol,sftol=sftol, sgtol=sgtol, sxtol=sxtol);
  */
 
 #include <errno.h>
+#include <stdint.h>
 
 #include "mex.h"
 #include "optimpacklegacy.h"
@@ -37,50 +39,46 @@
 #define TRUE  1
 #define FALSE 0
 
-void mexFunction( int nlhs, mxArray *plhs[],
-        int nrhs, const mxArray *prhs[] )
+void mexFunction(int nlhs, mxArray *plhs[],
+                 int nrhs, const mxArray *prhs[])
 {
-    double *f;
-    
+    double* f;
     int* isfree;
     double* x;
     double* g;
     double* h;
-    int *task;
     opl_vmlmb_workspace_t* ws;
     long n, m;
-    
+
     if (nrhs < 4 || nrhs > 6) {
         mexErrMsgTxt("expecting between 4 and 6 arguments");
     }
     if (nlhs != 1) {
         mexErrMsgTxt("1 output argument allowed.");
     }
-    
-    ws =  (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
+
+    ws = (opl_vmlmb_workspace_t*)mxGetPr(prhs[0]); /* get the workspace */
     n = opl_vmlmb_get_n(ws);   /* number of variable */
-    
+
     /* Control the input x */
     if ( !mxIsDouble(prhs[1]) || mxIsComplex(prhs[1]))
         mexErrMsgTxt("The second input x must be a real valued vector.");
     if (mxGetM(prhs[1])*mxGetN(prhs[1])!=n)
         mexErrMsgTxt("Incorrect dimension for the second input vector x");
     x = mxGetPr(prhs[1]);
-    
-    
+
     /* Control the input f */
     if (!mxIsDouble(prhs[2]) || !mxIsScalar(prhs[2])  || mxIsComplex(prhs[2]) )
         mexErrMsgTxt("The third input f must be a real valued scalar.");
     f = mxGetPr(prhs[2]);
-    
-    
+
     /* Control the input g */
     if (!mxIsDouble(prhs[3]) || mxIsComplex(prhs[3]) )
         mexErrMsgTxt("The fourth input g must be a real valued vector");
     if (mxGetM(prhs[3])*mxGetN(prhs[3])!=n)
         mexErrMsgTxt("Incorrect dimension for the fourth input vector g");
     g = mxGetPr(prhs[3]);
-    
+
     if(nrhs>4){
         /* Control the input isfree */
         if ( mxGetM(prhs[4])*mxGetN(prhs[4])==0 )
@@ -103,11 +101,12 @@ void mexFunction( int nlhs, mxArray *plhs[],
         h = mxGetPr(prhs[5]);
     }else{
         h =NULL;
-    };
-    mwSize dims[]={1,1};
-    plhs[0] = mxCreateNumericArray(2,dims,mxINT16_CLASS,mxREAL);
-    task = (opl_integer_t *)mxGetPr(plhs[0]);  /* opl_integer_t are 16 bits integers */
-    
-    task[0] = opl_vmlmb_iterate( ws, x, f, g, isfree, h);
-    
+    }
+
+    /* Retrieve the task value (assuming a 32-bit integer is large enough) and
+     * call the library function. */
+    mwSize dims[] = {1, 1};
+    plhs[0] = mxCreateNumericArray(2, dims, mxINT32_CLASS, mxREAL);
+    int32_t* task = (int32_t*)mxGetPr(plhs[0]);
+    task[0] = opl_vmlmb_iterate(ws, x, f, g, isfree, h);
 }
