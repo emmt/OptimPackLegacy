@@ -904,6 +904,23 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
 extern opl_task_t
 opl_vmlmb_restart(opl_vmlmb_workspace_t* ws);
 
+/**
+ * @brief Start a new VMLM-B iteration keeping the memorized Hessian model.
+ *
+ * This function initiates a new VMLM-B iteration.  Compared to @ref
+ * opl_vmlmb_restart, the memorized L-BFGS approximation of the Hessian is kept.
+ * Calling this function is not considered as a restart (hence the number of
+ * objective function calls, of iterations and of restarts are left unchanged).
+ *
+ * @param ws    The address of the VMLM-B workspace.
+ *
+ * @return @ref OPL_TASK_FG meaning that the caller shall compute the objective
+ * function and its gradient before calling @ref opl_vmlmb_iterate.  @ref
+ * OPL_ERROR is returned if @a ws is `NULL`.
+ */
+extern opl_task_t opl_vmlmb_warm_restart(
+   opl_vmlmb_workspace_t* ws);
+
 /* Restore last line search starting point.  Calling this is only effective if
    task is OPL_TASK_FG. */
 extern opl_task_t

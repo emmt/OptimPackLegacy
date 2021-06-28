@@ -223,6 +223,7 @@ opl_vmlmb_restart(opl_vmlmb_workspace_t* ws)
   ws->restarts = 0;
   ws->mark = -1;
   ws->mp = 0;
+  ws->searching = OPL_FALSE;
   ws->f0 = 0.0;
   ws->gd = 0.0;
   ws->g0d = 0.0;
@@ -231,6 +232,17 @@ opl_vmlmb_restart(opl_vmlmb_workspace_t* ws)
   STPMAX(ws) = 0.0;
   ws->gnorm = -1.0;
   ws->g0norm = -1.0;
+  return success(ws, OPL_TASK_FG, "compute f(x) and g(x)");
+}
+
+opl_task_t opl_vmlmb_warm_restart(
+  opl_vmlmb_workspace_t* ws)
+{
+  if (ws == NULL) {
+    errno = EFAULT;
+    return OPL_TASK_ERROR;
+  }
+  ws->searching = OPL_FALSE;
   return success(ws, OPL_TASK_FG, "compute f(x) and g(x)");
 }
 
@@ -277,12 +289,13 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
   switch (TASK(ws)) {
 
   case OPL_TASK_FG:
-    /* Caller has perfomed a new evaluation of the function and its gradient. */
+    /* Caller has performed a new evaluation of the function and its gradient. */
     ++ws->evaluations;
     if (have_fmin && *f <= ws->fmin) {
       return failure(ws, OPL_F_LE_FMIN, "initial F <= FMIN");
     }
-    if (ws->evaluations > 1) {
+    if (ws->searching) {
+      /* A line seach is in progress.  Check for convergence of this search. */
       opl_status_t status;
       opl_task_t task;
 
@@ -302,6 +315,7 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
                                      status == OPL_ROUNDING_ERROR))) {
         /* Line search has converged. */
         ++ws->iterations;
+        ws->searching = OPL_FALSE;
       } else {
         /* Error or warning in line search (task and context should have been
            set so as to describe the problem).  Restore solution at start of
@@ -458,10 +472,11 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
                     SFTOL(ws), SGTOL(ws), SXTOL(ws),
                     zero, stpmax);
     if (TASK(ws) != OPL_TASK_FG) {
-      /* Some error occured (task and context should have been set so as to
+      /* Some error occurred (task and context should have been set so as to
          describe the problem). */
       break;
     }
+    ws->searching = OPL_TRUE;
     /* Compute the new iterate. */
     return next_step(ws, x);
 

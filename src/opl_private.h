@@ -145,6 +145,7 @@ struct _opl_vmlmb_workspace {
   opl_integer_t evaluations;
   opl_integer_t iterations;
   opl_integer_t restarts;
+  int searching; /**< a line search is in progress */
   unsigned int flags;
   void (*free)(void*);
   double frtol;
