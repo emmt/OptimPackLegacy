@@ -28,6 +28,8 @@ eval(['mex ',matDir,'m_opl_vmlmb_get_reason.c ', CFiles,MexOpt]);
 eval(['mex ',matDir,'m_opl_vmlmb_create.c ', CFiles,MexOpt]);
 eval(['mex ',matDir,'m_opl_vmlmb_iterate.c ', CFiles,MexOpt]);
 eval(['mex ',matDir,'m_opl_vmlmb_restore.c ', CFiles,MexOpt]);
+eval(['mex ',matDir,'m_opl_vmlmb_restart.c ', CFiles,MexOpt]);
+eval(['mex ',matDir,'m_opl_vmlmb_warm_restart.c ', CFiles,MexOpt]);
 cd(pth);
 
 end
