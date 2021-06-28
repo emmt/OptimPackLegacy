@@ -2,9 +2,17 @@
 
 * A Python interface to VMLM-B is provided (thanks to Romain Fetick).
 
-* Array dimensions and indices are now `long` by default.
+* Array dimensions and indices are now `long`.
 
 * Compilation and installation is much easier thanks to GNU-autoconf tools.
+
+* With `VMLMB`, **warm starting** is possible to re-use the collected Hessian
+  information when minimizing a (slightly) different objective function while
+  the variables and the algorithm settings remain the same.
+
+* Scaling parameter `gamma` is computed once if there are no constraints.
+
+* Code is in standard C99.
 
 
 ## Version 1.4.0 (2017-01-10)
