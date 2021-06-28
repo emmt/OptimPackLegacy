@@ -138,6 +138,22 @@ extern opl_vmlmb_restart;
    SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate.
 */
 
+extern opl_vmlmb_warm_restart;
+/* DOCUMENT task = opl_vmlmb_warm_restart(ws);
+
+      Start a new iteration of the optimization by VMLMB controlled by the
+      workspace WS.  Compared to `opl_vmlmb_restart`, the L-BFGS approximation
+      of the Hessian memorized in WS is kept.  Calling this function is not
+      considered as a restart: the number of objective function calls, of
+      iterations and of restarts are left unchanged.
+
+      This function may be useful to implement a stochastic gradient method but
+      keeping the benefit of the memorized Hessian model to accelerate
+      convergence.
+
+   SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate, opl_vmlmb_restart.
+*/
+
 func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
                verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
                frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)

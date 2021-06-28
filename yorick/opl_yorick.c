@@ -8,7 +8,7 @@
  * This file is part of OptimPackLegacy
  * <https://github.com/emmt/OptimPackLegacy>.
  *
- * Copyright (c) 2003-2019, Éric Thiébaut.
+ * Copyright (c) 2003-2021, Éric Thiébaut.
  *
  * OptimPackLegacy is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -570,14 +570,21 @@ Y_opl_vmlmb_iterate(int argc)
 void
 Y_opl_vmlmb_restart(int argc)
 {
-  vmlmb_object_t* obj;
-
   if (argc != 1) {
     y_error("expecting exactly one argument");
   }
-  obj = get_vmlmb(0);
-  opl_vmlmb_restart(obj->ws);
-  ypush_long(opl_vmlmb_get_task(obj->ws));
+  vmlmb_object_t* obj = get_vmlmb(0);
+  ypush_long(opl_vmlmb_restart(obj->ws));
+}
+
+void Y_opl_vmlmb_warm_restart(
+  int argc)
+{
+  if (argc != 1) {
+    y_error("expecting exactly one argument");
+  }
+  vmlmb_object_t* obj = get_vmlmb(0);
+  ypush_long(opl_vmlmb_warm_restart(obj->ws));
 }
 
 void
