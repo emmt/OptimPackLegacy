@@ -49,8 +49,8 @@ _OPL_BEGIN_DECLS
  * Possible values for a boolean.
  */
 typedef enum {
-  OPL_FALSE = 0,
-  OPL_TRUE = 1
+    OPL_FALSE = 0,
+    OPL_TRUE = 1
 } opl_boolean_t;
 
 
@@ -64,33 +64,33 @@ typedef enum {
  *        buffer routines.
  */
 typedef enum {
-  /* Success. */
-  OPL_SUCCESS = 0,
+    /* Success. */
+    OPL_SUCCESS = 0,
 
-  /* Warnings. */
-  OPL_STP_EQ_STPMIN,
-  OPL_STP_EQ_STPMAX,
-  OPL_XTOL_TEST_SATISFIED,
-  OPL_ROUNDING_ERROR,
+    /* Warnings. */
+    OPL_STP_EQ_STPMIN,
+    OPL_STP_EQ_STPMAX,
+    OPL_XTOL_TEST_SATISFIED,
+    OPL_ROUNDING_ERROR,
 
-  /* Errors. */
-  OPL_STPMAX_LT_STPMIN,
-  OPL_STPMIN_LT_ZERO,
-  OPL_XTOL_LT_ZERO,
-  OPL_FTOL_LE_ZERO,
-  OPL_GTOL_LE_ZERO,
-  OPL_NOT_A_DESCENT,
-  OPL_STP_GT_STPMAX, /* OPL_OUT_OF_BOUNDS? */
-  OPL_STP_LT_STPMIN, /* OPL_OUT_OF_BOUNDS? */
-  OPL_F_LE_FMIN,
-  OPL_NOT_POSITIVE_DEFINITE,
-  OPL_INSUFFICIENT_MEMORY,
-  OPL_ILLEGAL_ADDRESS,
-  OPL_INVALID_ARGUMENT,
-  OPL_OUT_OF_BOUNDS,
-  OPL_CORRUPTED,
-  OPL_OVERFLOW,
-  OPL_SYSTEM_ERROR   /* System error, use errno code. */
+    /* Errors. */
+    OPL_STPMAX_LT_STPMIN,
+    OPL_STPMIN_LT_ZERO,
+    OPL_XTOL_LT_ZERO,
+    OPL_FTOL_LE_ZERO,
+    OPL_GTOL_LE_ZERO,
+    OPL_NOT_A_DESCENT,
+    OPL_STP_GT_STPMAX, /* OPL_OUT_OF_BOUNDS? */
+    OPL_STP_LT_STPMIN, /* OPL_OUT_OF_BOUNDS? */
+    OPL_F_LE_FMIN,
+    OPL_NOT_POSITIVE_DEFINITE,
+    OPL_INSUFFICIENT_MEMORY,
+    OPL_ILLEGAL_ADDRESS,
+    OPL_INVALID_ARGUMENT,
+    OPL_OUT_OF_BOUNDS,
+    OPL_CORRUPTED,
+    OPL_OVERFLOW,
+    OPL_SYSTEM_ERROR   /* System error, use errno code. */
 } opl_status_t;
 
 /**
@@ -105,7 +105,8 @@ typedef struct _opl_context opl_context_t;
  *
  * @return A status value.
  */
-extern opl_status_t opl_get_status(opl_context_t* ctx);
+extern opl_status_t opl_get_status(
+    opl_context_t* ctx);
 
 /**
  * Query system error code from context.
@@ -116,7 +117,8 @@ extern opl_status_t opl_get_status(opl_context_t* ctx);
  *         code (a.k.a. `errno`) when the error occurred is returned; otherwise,
  *         0 is returned.
  */
-extern int opl_get_errno(opl_context_t* ctx);
+extern int opl_get_errno(
+    opl_context_t* ctx);
 
 /**
  * Query message from context.
@@ -125,7 +127,8 @@ extern int opl_get_errno(opl_context_t* ctx);
  *
  * @return A human readable message.
  */
-extern const char* opl_get_message(opl_context_t* ctx);
+extern const char* opl_get_message(
+    opl_context_t* ctx);
 
 /**
  * Query an explanation about a status code.
@@ -134,7 +137,8 @@ extern const char* opl_get_message(opl_context_t* ctx);
  *
  * @return A human readable message.
  */
-extern const char* opl_get_default_message(opl_status_t status);
+extern const char* opl_get_default_message(
+    opl_status_t status);
 
 /**
  * Initialize a context.
@@ -144,14 +148,15 @@ extern const char* opl_get_default_message(opl_status_t status);
  *
  * @param ctx     The address of the context.
  */
-extern void opl_initialize_context(opl_context_t* ctx);
+extern void opl_initialize_context(
+    opl_context_t* ctx);
 
 /**
  * The different storage types.
  */
 typedef enum {
-  OPL_VOLATILE = 0, /** Storage is volatile, a copy must be done. */
-  OPL_PERMANENT     /** Storage is permanent, the same address can be used. */
+    OPL_VOLATILE = 0, /** Volatile storage, a copy must be done. */
+    OPL_PERMANENT     /** Permanent storage, the same address can be used. */
 } opl_storage_type_t;
 
 /**
@@ -174,10 +179,11 @@ typedef enum {
  *
  * @return The value of `status`.
  */
-extern opl_status_t opl_set_context(opl_context_t* ctx,
-                                    opl_status_t status,
-                                    const char* message,
-                                    opl_storage_type_t type);
+extern opl_status_t opl_set_context(
+    opl_context_t* ctx,
+    opl_status_t status,
+    const char* message,
+    opl_storage_type_t type);
 
 /**
  * Set a context with a formated message.
@@ -195,9 +201,11 @@ extern opl_status_t opl_set_context(opl_context_t* ctx,
  *
  * @return The value of `status`.
  */
-extern opl_status_t opl_format_context(opl_context_t* ctx,
-                                       opl_status_t status,
-                                       const char* format, ...);
+extern opl_status_t opl_format_context(
+    opl_context_t* ctx,
+    opl_status_t status,
+    const char* format,
+    ...);
 
 /**
  * Report successful operation.
@@ -213,7 +221,8 @@ extern opl_status_t opl_format_context(opl_context_t* ctx,
  *
  * @return `OPL_SUCCESS`.
  */
-extern opl_status_t opl_success(opl_context_t* ctx);
+extern opl_status_t opl_success(
+    opl_context_t* ctx);
 
 /*---------------------------------------------------------------------------*/
 /* LINE SEARCH */
@@ -334,13 +343,13 @@ extern opl_status_t opl_success(opl_context_t* ctx);
  * Possible values for an optimization task.
  */
 typedef enum {
-  OPL_TASK_START     = 0, /*< start line search */
-  OPL_TASK_FG        = 1, /*< caller has to compute function and gradient */
-  OPL_TASK_FREEVARS  = 2, /*< caller has to determine the free variables */
-  OPL_TASK_NEWX      = 3, /*< new variables available for inspection */
-  OPL_TASK_CONV      = 4, /*< search has converged */
-  OPL_TASK_WARN      = 5, /*< search aborted with warning */
-  OPL_TASK_ERROR     = 6  /*< search aborted with error */
+    OPL_TASK_START     = 0, /*< start line search */
+    OPL_TASK_FG        = 1, /*< caller has to compute function and gradient */
+    OPL_TASK_FREEVARS  = 2, /*< caller has to determine the free variables */
+    OPL_TASK_NEWX      = 3, /*< new variables available for inspection */
+    OPL_TASK_CONV      = 4, /*< search has converged */
+    OPL_TASK_WARN      = 5, /*< search aborted with warning */
+    OPL_TASK_ERROR     = 6  /*< search aborted with error */
 } opl_task_t;
 
 /**
@@ -351,19 +360,22 @@ typedef struct _opl_csrch_workspace opl_csrch_workspace_t;
 /**
  * Get the pending task of a line search instance.
  */
-extern opl_task_t opl_csrch_get_task(opl_csrch_workspace_t* ws);
+extern opl_task_t opl_csrch_get_task(
+    opl_csrch_workspace_t* ws);
 
 /**
  * Get the status of the last operation on a line search instance.
  */
-extern opl_status_t opl_csrch_get_status(opl_csrch_workspace_t* ws);
+extern opl_status_t opl_csrch_get_status(
+    opl_csrch_workspace_t* ws);
 
 
 /**
  * Get the message explaining the result of the last operation on a line search
  * instance.
  */
-extern const char* opl_csrch_get_reason(opl_csrch_workspace_t* ws);
+extern const char* opl_csrch_get_reason(
+    opl_csrch_workspace_t* ws);
 
 /**
  * Get the size of a Moré & Thuente line search instance.
@@ -398,7 +410,8 @@ extern opl_csrch_workspace_t* opl_csrch_create_workspace(void);
  * @param ws    A line search instance created by @link
  *              #opl_csrch_create_workspace.
  */
-extern void opl_csrch_destroy_workspace(opl_csrch_workspace_t* ws);
+extern void opl_csrch_destroy_workspace(
+    opl_csrch_workspace_t* ws);
 
 /**
  * Initiate a line search by Moré & Thuente method.
@@ -431,10 +444,16 @@ extern void opl_csrch_destroy_workspace(opl_csrch_workspace_t* ws);
  * @return A standard status: `OPL_SUCCESS` or any other value to indicate the
  *         error.
  */
-extern opl_status_t
-opl_csrch_start(opl_csrch_workspace_t* ws, double f, double g, double stp,
-                double ftol, double gtol, double xtol,
-                double stpmin, double stpmax);
+extern opl_status_t opl_csrch_start(
+    opl_csrch_workspace_t* ws,
+    double f,
+    double g,
+    double stp,
+    double ftol,
+    double gtol,
+    double xtol,
+    double stpmin,
+    double stpmax);
 
 /**
  * Iterate a line search by Moré & Thuente method.
@@ -490,9 +509,11 @@ opl_csrch_start(opl_csrch_workspace_t* ws, double f, double g, double stp,
  * - `OPL_STPMAX_LT_STPMIN` with `task = OPL_TASK_ERROR`: the search bounds are
  *   incompatible.
  */
-extern opl_status_t
-opl_csrch_iterate(opl_csrch_workspace_t* ws, double f, double g,
-                  double *stp);
+extern opl_status_t opl_csrch_iterate(
+    opl_csrch_workspace_t* ws,
+    double f,
+    double g,
+    double *stp);
 
 /**
  * Compute a safeguarded cubic step.
@@ -556,12 +577,20 @@ opl_csrch_iterate(opl_csrch_workspace_t* ws, double f, double g,
  *         (failure can only occur with wrong arguments).  The context `ctx` is
  *         used to report errors if any.
  */
-extern opl_status_t
-opl_cstep(opl_context_t* ctx, opl_boolean_t *brackt,
-          double stpmin, double stpmax,
-          double *stx_ptr, double *fx_ptr, double *dx_ptr,
-          double *sty_ptr, double *fy_ptr, double *dy_ptr,
-          double *stp_ptr, double  fp,     double  dp);
+extern opl_status_t opl_cstep(
+    opl_context_t* ctx,
+    opl_boolean_t *brackt,
+    double stpmin,
+    double stpmax,
+    double *stx_ptr,
+    double *fx_ptr,
+    double *dx_ptr,
+    double *sty_ptr,
+    double *fy_ptr,
+    double *dy_ptr,
+    double *stp_ptr,
+    double  fp,
+    double  dp);
 /**
  * @}
  */
@@ -610,8 +639,9 @@ typedef struct _opl_vmlmb_workspace opl_vmlmb_workspace_t;
  * @return The size in bytes of a monolithic workspace for VMLMB.  Zero is
  *         returned if the arguments are invalid (not strictly positive).
  */
-extern size_t
-opl_vmlmb_monolithic_workspace_size(long n, long m);
+extern size_t opl_vmlmb_monolithic_workspace_size(
+    long n,
+    long m);
 
 /**
  * Initialize a workspace allocated as one block.
@@ -627,18 +657,20 @@ opl_vmlmb_monolithic_workspace_size(long n, long m);
  * @return The workspace initialized with defaults.  `NULL` is returned
  *         if `buf` is not a valid address.
  */
-extern opl_vmlmb_workspace_t*
-opl_vmlmb_monolithic_workspace_init(void* buf,
-                                    long n, long m);
+extern opl_vmlmb_workspace_t* opl_vmlmb_monolithic_workspace_init(
+    void* buf,
+    long n,
+    long m);
 
-extern opl_vmlmb_workspace_t*
-opl_vmlmb_set_defaults(opl_vmlmb_workspace_t* ws);
+extern opl_vmlmb_workspace_t* opl_vmlmb_set_defaults(
+    opl_vmlmb_workspace_t* ws);
 
-extern opl_vmlmb_workspace_t*
-opl_vmlmb_create(long n, long m);
+extern opl_vmlmb_workspace_t* opl_vmlmb_create(
+    long n,
+    long m);
 
-extern void
-opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
+extern void opl_vmlmb_destroy(
+    opl_vmlmb_workspace_t* ws);
 
 /*
  * VMLM-B computes a local minimizer of a function of N variables by a limited
@@ -869,15 +901,18 @@ opl_vmlmb_destroy(opl_vmlmb_workspace_t* ws);
  *   Éric Thiébaut.
  */
 
-extern opl_task_t
-opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
-                  double x[], double *f, double g[],
-                  int isfree[], const double h[]);
+extern opl_task_t opl_vmlmb_iterate(
+    opl_vmlmb_workspace_t* ws,
+    double x[],
+    double *f,
+    double g[],
+    int isfree[],
+    const double h[]);
 
 /* Set workspace data so that it can be used for a new optimization with
    the same parameters. */
-extern opl_task_t
-opl_vmlmb_restart(opl_vmlmb_workspace_t* ws);
+extern opl_task_t opl_vmlmb_restart(
+    opl_vmlmb_workspace_t* ws);
 
 /**
  * @brief Start a new VMLM-B iteration keeping the memorized Hessian model.
@@ -894,13 +929,15 @@ opl_vmlmb_restart(opl_vmlmb_workspace_t* ws);
  * OPL_ERROR is returned if @a ws is `NULL`.
  */
 extern opl_task_t opl_vmlmb_warm_restart(
-   opl_vmlmb_workspace_t* ws);
+    opl_vmlmb_workspace_t* ws);
 
 /* Restore last line search starting point.  Calling this is only effective if
    task is OPL_TASK_FG. */
-extern opl_task_t
-opl_vmlmb_restore(opl_vmlmb_workspace_t* ws,
-                  double x[], double *f, double g[]);
+extern opl_task_t opl_vmlmb_restore(
+    opl_vmlmb_workspace_t* ws,
+    double x[],
+    double *f,
+    double g[]);
 
 /**
  * Set or unset a strict lower bound for the objective function.
@@ -918,8 +955,9 @@ opl_vmlmb_restore(opl_vmlmb_workspace_t* ws,
  * @return `OPL_SUCCESS` or any other value to indicate the reason of the
  *         failure.
  */
-extern opl_status_t
-opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_fmin(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
 /**
  * Get the strict lower bound for the objective function.
@@ -930,55 +968,84 @@ opl_vmlmb_set_fmin(opl_vmlmb_workspace_t* ws, double value);
  *         function.  A NaN value is returned if there is no such bound or in
  *         case of error (i.e. `ws` is `NULL`).
  */
-extern long
-opl_vmlmb_get_n(opl_vmlmb_workspace_t* ws);
+extern long opl_vmlmb_get_n(opl_vmlmb_workspace_t* ws);
 
-extern long
-opl_vmlmb_get_m(opl_vmlmb_workspace_t* ws);
+extern long opl_vmlmb_get_m(opl_vmlmb_workspace_t* ws);
 
-extern double
-opl_vmlmb_get_fmin(opl_vmlmb_workspace_t* ws);
+extern double opl_vmlmb_get_fmin(opl_vmlmb_workspace_t* ws);
 
-extern opl_status_t
-opl_vmlmb_set_fatol(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_fatol(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_status_t
-opl_vmlmb_set_frtol(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_frtol(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_status_t
-opl_vmlmb_set_delta(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_delta(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_status_t
-opl_vmlmb_set_epsilon(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_epsilon(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_status_t
-opl_vmlmb_set_sxtol(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_sxtol(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_status_t
-opl_vmlmb_set_sftol(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_sftol(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_status_t
-opl_vmlmb_set_sgtol(opl_vmlmb_workspace_t* ws, double value);
+extern opl_status_t opl_vmlmb_set_sgtol(
+    opl_vmlmb_workspace_t* ws,
+    double value);
 
-extern opl_task_t opl_vmlmb_get_task(opl_vmlmb_workspace_t* ws);
+extern opl_task_t opl_vmlmb_get_task(
+    opl_vmlmb_workspace_t* ws);
 
-extern opl_status_t opl_vmlmb_get_status(opl_vmlmb_workspace_t* ws);
+extern opl_status_t opl_vmlmb_get_status(
+    opl_vmlmb_workspace_t* ws);
 
-extern const char* opl_vmlmb_get_reason(opl_vmlmb_workspace_t* ws);
+extern const char* opl_vmlmb_get_reason(
+    opl_vmlmb_workspace_t* ws);
 
-extern double opl_vmlmb_get_sftol(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_sgtol(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_sxtol(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_frtol(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_fatol(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_epsilon(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_delta(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_step(opl_vmlmb_workspace_t* ws);
-extern double opl_vmlmb_get_gnorm(opl_vmlmb_workspace_t* ws);
+extern double opl_vmlmb_get_sftol(
+    opl_vmlmb_workspace_t* ws);
 
-extern long opl_vmlmb_get_evaluations(opl_vmlmb_workspace_t* ws);
-extern long opl_vmlmb_get_iterations(opl_vmlmb_workspace_t* ws);
-extern long opl_vmlmb_get_restarts(opl_vmlmb_workspace_t* ws);
+extern double opl_vmlmb_get_sgtol(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_sxtol(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_frtol(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_fatol(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_epsilon(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_delta(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_step(
+    opl_vmlmb_workspace_t* ws);
+
+extern double opl_vmlmb_get_gnorm(
+    opl_vmlmb_workspace_t* ws);
+
+extern long opl_vmlmb_get_evaluations(
+    opl_vmlmb_workspace_t* ws);
+
+extern long opl_vmlmb_get_iterations(
+    opl_vmlmb_workspace_t* ws);
+
+extern long opl_vmlmb_get_restarts(
+    opl_vmlmb_workspace_t* ws);
 /*	Query values of current step size along search direction, curent
 	iteration number. */
 
@@ -989,16 +1056,22 @@ extern long opl_vmlmb_get_restarts(opl_vmlmb_workspace_t* ws);
 /*---------------------------------------------------------------------------*/
 /* APPLY BOUND CONSTRAINTS */
 
-extern void opl_bounds_apply(long n, double x[],
-                             const double xmin[], const double xmax[]);
+extern void opl_bounds_apply(
+    long n,
+    double x[],
+    const double xmin[],
+    const double xmax[]);
 /*	Apply bounds constraints to array X.  Input/output array X has N
 	elements, XMIN must have N elements (the lower bounds of X) or be
 	NULL (no lower bounds), similarly XMAX must have N elements (the
 	upper bounds of X) or be NULL (no upper bounds). */
 
-extern void opl_bounds_free(long n, int isfree[],
-                            const double x[], const double g[],
-                            const double xmin[], const double xmax[]);
+extern void opl_bounds_free(
+    long n,
+    int isfree[],
+    const double x[], const double g[],
+    const double xmin[],
+    const double xmax[]);
 /*	Set elements of ISFREE to true or false whether the corresponding
 	elements in X belong to the unbinded set of parameters or not.
 	Output array ISFREE is an N element array. Input arrays X, XMIN and
@@ -1006,34 +1079,51 @@ extern void opl_bounds_free(long n, int isfree[],
 	gradient which is an N element array.  The unbinded set of parameters
 	verify the following conditions:
 
-	  (X[i] > XMIN[i] || G[i] < 0) && (X[i] < XMAX[i] || G[i] > 0) */
+        (X[i] > XMIN[i] || G[i] < 0) && (X[i] < XMAX[i] || G[i] > 0) */
 
-extern long opl_bounds_check(long n, const double xmin[],
-                                      const double xmax[]);
+extern long opl_bounds_check(
+    long n,
+    const double xmin[],
+    const double xmax[]);
 /*	Check correctness of bounds XMIN and XMAX (see opl_bounds_apply for
 	the definition of the arguments).  This function returns -1 if the
 	bounds are such that XMIN[i] <= XMAX[i] for all i=0,...,N-1;
 	otherwise, the function return the value i of the first index (i >=
 	0) for which the condition is violated. */
 
-extern void opl_lower_bound_apply(long n, double x[], double xmin);
-extern void opl_lower_bound_free(long n, int isfree[],
-                                 const double x[], const double g[],
-                                 double xmin);
+extern void opl_lower_bound_apply(
+    long n, double x[],
+    double xmin);
+extern void opl_lower_bound_free(
+    long n,
+    int isfree[],
+    const double x[],
+    const double g[],
+    double xmin);
 /*	These routines are similar to opl_bounds_apply and opl_bounds_free but
 	for a scalar lower bound XMIN that is the same for all parameters X. */
 
-extern void opl_upper_bound_apply(long n, double x[], double xmax);
-extern void opl_upper_bound_free(long n, int isfree[],
-                                 const double x[], const double g[],
-                                 double xmax);
+extern void opl_upper_bound_apply(
+    long n,
+    double x[],
+    double xmax);
+extern void opl_upper_bound_free(
+    long n,
+    int isfree[],
+    const double x[],
+    const double g[],
+    double xmax);
 /*	These routines are similar to opl_bounds_apply and opl_bounds_free but
 	for a scalar upper bound XMAX that is the same for all parameters X. */
 
-extern void opl_interval_apply(long n, double x[], double a, double b);
-extern void opl_interval_free(long n, int isfree[],
-                              const double x[], const double g[],
-                              double a, double b);
+extern void opl_interval_apply(
+    long n, double x[], double a, double b);
+extern void opl_interval_free(
+    long n, int isfree[],
+    const double x[],
+    const double g[],
+    double a,
+    double b);
 /*	These routines are similar to opl_bounds_apply and opl_bounds_free
 	but for a scalar lower bound XMIN=min(A,B) and a scalar upper bound
 	XMAX=max(A,B) that are the same for all parameters X. */
@@ -1041,48 +1131,77 @@ extern void opl_interval_free(long n, int isfree[],
 /*---------------------------------------------------------------------------*/
 /* UTILITIES */
 
-extern double opl_dnrm2(long n, const double x[]);
+extern double opl_dnrm2(
+    long n,
+    const double x[]);
 /* Returns the Euclidian norm of X: sqrt(X'.X), taking care of overflows. */
 
 
-extern void opl_dcopy(long n, const double x[], double y[]);
-extern void opl_dcopy_free(long n, const double x[],
-                           double y[], const int isfree[]);
+extern void opl_dcopy(
+    long n,
+    const double x[],
+    double y[]);
+extern void opl_dcopy_free(
+    long n,
+    const double x[],
+    double y[],
+    const int isfree[]);
 /* Copy elements of X into Y.  Does Y[i] = X[i] for i=0,...,N-1.  If ISFREE
    is non-NULL, only elements for which ISFREE[i] is true (non-zero) are
    taken into account. */
 
-extern void opl_daxpy(long n, double a,
-		     const double x[], double y[]);
-extern void opl_daxpy_free(long n, double a,
-                           const double x[], double y[],
-                           const int isfree[]);
+extern void opl_daxpy(
+    long n,
+    double a,
+    const double x[],
+    double y[]);
+extern void opl_daxpy_free(
+    long n,
+    double a,
+    const double x[],
+    double y[],
+    const int isfree[]);
 /* Does Y[i] += A*X[i] for i=0,...,N-1.  If ISFREE is non-NULL, only
    elements for which ISFREE[i] is true (non-zero) are taken into
    account. */
 
-extern double opl_ddot(long n, const double x[], const double y[]);
-extern double opl_ddot_free(long n, const double x[],
-                            const double y[], const int isfree[]);
+extern double opl_ddot(
+    long n,
+    const double x[],
+    const double y[]);
+extern double opl_ddot_free(
+    long n,
+    const double x[],
+    const double y[],
+    const int isfree[]);
 /* Computes dot product of N-element vectors X and Y. If ISFREE is
    non-NULL, only elements for which ISFREE[i] is true (non-zero) are taken
    into account. */
 
-extern void opl_dscal(long n, double a, double x[]);
+extern void opl_dscal(
+    long n,
+    double a,
+    double x[]);
 /* Scales N-element vector X by scalar A. */
 
 /*---------------------------------------------------------------------------*/
 /* YORICK-LIKE ROUTINES */
 
-extern int opl_anyof(long n, const double x[]);
+extern int opl_anyof(
+    long n,
+    const double x[]);
 /* Returns true (non-zero) if any element of X is non-zero; returns faslse
    (zero) otherwise. N is the number of elements of X. */
 
-extern int opl_noneof(long n, const double x[]);
+extern int opl_noneof(
+    long n,
+    const double x[]);
 /* Returns true (non-zero) if all elements of X are zero; returns faslse
    (zero) otherwise. N is the number of elements of X. */
 
-extern int opl_allof(long n, const double x[]);
+extern int opl_allof(
+    long n,
+    const double x[]);
 /* Returns true (non-zero) if all elements of X are non-zero; returns faslse
    (zero) otherwise. N is the number of elements of X. */
 

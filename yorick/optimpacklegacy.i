@@ -131,9 +131,9 @@ extern opl_vmlmb_restore;
 extern opl_vmlmb_restart;
 /* DOCUMENT task = opl_vmlmb_restart(ws);
 
-      Set VMLMB workspace WS so that it can be used for a new optimization with
-      the same parameters.  The L-BFGS approximation of the Hessian and all
-      counters memorized in WS are reset.
+     Set VMLMB workspace WS so that it can be used for a new optimization with
+     the same parameters.  The L-BFGS approximation of the Hessian and all
+     counters memorized in WS are reset.
 
    SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate.
 */
@@ -141,15 +141,15 @@ extern opl_vmlmb_restart;
 extern opl_vmlmb_warm_restart;
 /* DOCUMENT task = opl_vmlmb_warm_restart(ws);
 
-      Start a new iteration of the optimization by VMLMB controlled by the
-      workspace WS.  Compared to `opl_vmlmb_restart`, the L-BFGS approximation
-      of the Hessian memorized in WS is kept.  Calling this function is not
-      considered as a restart: the number of objective function calls, of
-      iterations and of restarts are left unchanged.
+     Start a new iteration of the optimization by VMLMB controlled by the
+     workspace WS.  Compared to `opl_vmlmb_restart`, the L-BFGS approximation
+     of the Hessian memorized in WS is kept.  Calling this function is not
+     considered as a restart: the number of objective function calls, of
+     iterations and of restarts are left unchanged.
 
-      This function may be useful to implement a stochastic gradient method but
-      keeping the benefit of the memorized Hessian model to accelerate
-      convergence.
+     This function may be useful to implement a stochastic gradient method but
+     keeping the benefit of the memorized Hessian model to accelerate
+     convergence.
 
    SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate, opl_vmlmb_restart.
 */
@@ -245,209 +245,213 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
    SEE ALSO: opl_vmlmb_config, opl_vmlmb_create, opl_vmlmb_iterate.
 */
 {
-  /* Largest value of a long integer. */
-  LONG_MAX = (1 << (sizeof(long)*8 - 1)) - 1;
+    /* Largest value of a long integer. */
+    LONG_MAX = (1 << (sizeof(long)*8 - 1)) - 1;
 
-  /* Get function. */
-  if (is_void(f) || is_array(f)) {
-    error, "expecting a function for argument F";
-  }
-  use_extra = (! is_void(extra));
-
-  /* Starting parameters. */
-  if ((s = structof(x0)) != double && s != float && s != long &&
-      s != int && s != short && s != char) {
-    error, "expecting a numerical array for initial parameters X0";
-  }
-  dims = dimsof(x0);
-
-  /* Bounds on parameters. */
-  bounds = 0;
-  if (! is_void(xmin)) {
-    if (is_void((t = dimsof(x0, xmin))) || t(1) != dims(1)
-        || anyof(t != dims)) {
-      error, "bad dimensions for lower bound XMIN";
+    /* Get function. */
+    if (is_void(f) || is_array(f)) {
+        error, "expecting a function for argument F";
     }
-    if ((convert = (s = structof(xmin)) != double) && s != float &&
-        s != long && s != int && s != short && s != char) {
-      error, "bad data type for lower bound XMIN";
+    use_extra = (! is_void(extra));
+
+    /* Starting parameters. */
+    if ((s = structof(x0)) != double && s != float && s != long &&
+        s != int && s != short && s != char) {
+        error, "expecting a numerical array for initial parameters X0";
     }
-    if (convert || (t = dimsof(xmin))(1) != dims(1) || anyof(t != dims)) {
-      xmin += array(double, dims);
-    }
-    bounds |= 1;
-  }
-  if (! is_void(xmax)) {
-    if (is_void((t = dimsof(x0, xmax))) || t(1) != dims(1)
-        || anyof(t != dims)) {
-      error, "bad dimensions for lower bound XMAX";
-    }
-    if ((convert = (s = structof(xmax)) != double) && s != float &&
-        s != long && s != int && s != short && s != char) {
-      error, "bad data type for lower bound XMAX";
-    }
-    if (convert || (t = dimsof(xmax))(1) != dims(1) || anyof(t != dims)) {
-      xmax += array(double, dims);
-    }
-    bounds |= 2;
-  }
+    dims = dimsof(x0);
 
-  /* Output stream. */
-  if (! is_void(output)) {
-    if (structof(output) == string) {
-      output = open(output, "a");
-    } else if (typeof(output) != "text_stream") {
-      error, "bad value for keyword OUTPUT";
-    }
-  }
-
-  /* Maximum number of iterations and function evaluations. */
-  if (is_void(maxiter)) maxiter = LONG_MAX;
-  if (is_void(maxeval)) maxeval = LONG_MAX;
-  if (maxeval < 1) {
-    error, "MAXEVAL must be at least 1";
-  }
-
-  /* Viewer and printer subroutines. */
-  use_printer = (! is_void(printer));
-  use_viewer  = (! is_void(viewer));
-
-  /* Global convergence parameters. */
-  if (is_void(gatol)) {
-    gatol = 0.0;
-  } else if (is_scalar(gatol) && identof(gatol) <= Y_DOUBLE &&
-             gatol >= 0) {
-    gatol = double(gatol);
-  } else {
-    error, "bad value for GATOL";
-  }
-  if (is_void(grtol)) {
-    grtol = 0.0;
-  } else if (is_scalar(grtol) && identof(grtol) <= Y_DOUBLE &&
-             grtol >= 0 && grtol <= 1) {
-    grtol = double(grtol);
-  } else {
-    error, "bad value for GRTOL";
-  }
-  gtest = double(gatol);
-
-  /* Choose minimization method. */
-  if (is_void(mem)) mem = min(numberof(x0), 7);
-  method_name = swrite(format="VMLMB %s bounds and MEM=%d",
-                       (bounds != 0 ? "with" : "without"), mem);
-  ws = opl_vmlmb_create(dims, mem, fmin=fmin,
-                        fatol=fatol, frtol=frtol,
-                        sftol=sftol, sgtol=sgtol, sxtol=sxtol);
-
-  /* Initial iterate.  Force copy and conversion then free memory.  Do not use
-     somthing like `x = double(unref(x0))` as it may result in `x` being the
-     same array `x0` and thus impact the caller. */
-  x = double(x0); // force copy and conversion
-  x0 = [];        // free memory
-
-  /* Start iterations. */
-  task = 1;
-  eval = 0;
-  stop = 0n;
-  if (verb) {
-    elapsed = array(double, 3);
-    timer, elapsed;
-    wall_start = elapsed(3);
-    print_header = (! use_printer);
-    last_print_iter = -1;
-  }
-  local gx, gnorm, isfree, iter, step;
-  task = ws.task;
-  for (;;) {
-    if (task == OPL_TASK_FG) {
-      /* Evaluate function and gradient. */
-      if (eval >= maxeval) {
-        /* Too many function evaluations.  We restore the variables at the
-           start of the line search which is a cheap way (no extra memory cost)
-           to recover variables which should be nearly the best ones.  We wait
-           until last iteration information have been printed to stop the
-           iterations. */
-        stop = 1n;
-        msg = swrite(format="too many function evaluations (%d)", eval);
-        opl_vmlmb_restore, ws, x, fx, gx;
-      } else {
-        if (bounds != 0) {
-          if ((bounds & 1) == 1) {
-            x = max(unref(x), xmin);
-          }
-          if ((bounds & 2) == 2) {
-            x = min(unref(x), xmax);
-          }
+    /* Bounds on parameters. */
+    bounds = 0;
+    if (! is_void(xmin)) {
+        if (is_void((t = dimsof(x0, xmin))) || t(1) != dims(1)
+            || anyof(t != dims)) {
+            error, "bad dimensions for lower bound XMIN";
         }
-        fx = (use_extra ? f(x, gx, extra) : f(x, gx));
-        ++eval;
-      }
+        if ((convert = (s = structof(xmin)) != double) && s != float &&
+            s != long && s != int && s != short && s != char) {
+            error, "bad data type for lower bound XMIN";
+        }
+        if (convert || (t = dimsof(xmin))(1) != dims(1) || anyof(t != dims)) {
+            xmin += array(double, dims);
+        }
+        bounds |= 1;
     }
-    if (task == OPL_TASK_FREEVARS && bounds != 0) {
-      /* Determine the set of free variables. */
-      isfree = [];
-      if (bounds == 1) {
-        isfree = ((x > xmin) | (gx < 0.0));
-      } else if (bounds == 2) {
-        isfree = ((x < xmax) | (gx > 0.0));
-      } else {
-        isfree = (((x > xmin) | (gx < 0.0)) & ((x < xmax) | (gx > 0.0)));
-      }
-    }
-
-    /* Check for convergence. */
-    if (task >= OPL_TASK_NEWX) {
-      iter = ws.iterations;
-      if (task >= OPL_TASK_WARN) {
-        /* Error or warning. */
-        stop = 1n;
-        msg = ws.reason;
-      } else if (ws.gnorm <= gtest) {
-        stop = 1n;
-        msg = swrite(format="convergence (%s)", "gradient small enough");
-      } else if (iter >= maxiter) {
-        stop = 1n;
-        msg = swrite(format="too many iterations (%d)", iter);
-      }
-    }
-    if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0) &&
-        iter > last_print_iter) {
-      /* Print information. */
-      if (print_header) {
-        write, output, format="# Method %d (MEM=%d): %s\n#\n",
-          0, mem, method_name;
-        write, output, format="%s%s\n%s%s\n",
-          "# Iter.   Time (ms)    Eval. Reject.",
-          "       Obj. Func.           Grad.       Step",
-          "# ----------------------------------",
-          "-----------------------------------------------";
-        print_header = 0n;
-      }
-      timer, elapsed;
-      wall = elapsed(3) - wall_start;
-      step = ws.step;
-      gnorm = ws.gnorm;
-      if (use_printer) {
-        printer, output, iter, eval, wall, fx, gnorm, step, x, extra;
-      } else {
-        write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
-          iter, wall*1e3, eval, 0, fx, gnorm, step;
-      }
-      if (use_viewer) {
-        viewer, x, extra;
-      }
-      last_print_iter = iter;
-    }
-    if (stop) {
-      if (msg && (verb || (task != 3 && ! quiet))) {
-        write, output, format="# %s\n", strtrim(msg, 2, blank=" \t\v\n\r");
-      }
-      return x;
+    if (! is_void(xmax)) {
+        if (is_void((t = dimsof(x0, xmax))) || t(1) != dims(1)
+            || anyof(t != dims)) {
+            error, "bad dimensions for lower bound XMAX";
+        }
+        if ((convert = (s = structof(xmax)) != double) && s != float &&
+            s != long && s != int && s != short && s != char) {
+            error, "bad data type for lower bound XMAX";
+        }
+        if (convert || (t = dimsof(xmax))(1) != dims(1) || anyof(t != dims)) {
+            xmax += array(double, dims);
+        }
+        bounds |= 2;
     }
 
-    /* Call optimizer. */
-    task = opl_vmlmb_iterate(ws, x, fx, gx, isfree);
-  }
+    /* Output stream. */
+    if (! is_void(output)) {
+        if (structof(output) == string) {
+            output = open(output, "a");
+        } else if (typeof(output) != "text_stream") {
+            error, "bad value for keyword OUTPUT";
+        }
+    }
+
+    /* Maximum number of iterations and function evaluations. */
+    if (is_void(maxiter)) maxiter = LONG_MAX;
+    if (is_void(maxeval)) maxeval = LONG_MAX;
+    if (maxeval < 1) {
+        error, "MAXEVAL must be at least 1";
+    }
+
+    /* Viewer and printer subroutines. */
+    use_printer = (! is_void(printer));
+    use_viewer  = (! is_void(viewer));
+
+    /* Global convergence parameters. */
+    if (is_void(gatol)) {
+        gatol = 0.0;
+    } else if (is_scalar(gatol) && identof(gatol) <= Y_DOUBLE &&
+               gatol >= 0) {
+        gatol = double(gatol);
+    } else {
+        error, "bad value for GATOL";
+    }
+    if (is_void(grtol)) {
+        grtol = 0.0;
+    } else if (is_scalar(grtol) && identof(grtol) <= Y_DOUBLE &&
+               grtol >= 0 && grtol <= 1) {
+        grtol = double(grtol);
+    } else {
+        error, "bad value for GRTOL";
+    }
+    gtest = double(gatol);
+
+    /* Choose minimization method. */
+    if (is_void(mem)) mem = min(numberof(x0), 7);
+    method_name = swrite(format="VMLMB %s bounds and MEM=%d",
+                         (bounds != 0 ? "with" : "without"), mem);
+    ws = opl_vmlmb_create(dims, mem, fmin=fmin,
+                          fatol=fatol, frtol=frtol,
+                          sftol=sftol, sgtol=sgtol, sxtol=sxtol);
+
+    /* Initial iterate.  Force copy and conversion then free memory.  Do not use
+       somthing like `x = double(unref(x0))` as it may result in `x` being the
+       same array `x0` and thus impact the caller. */
+    x = double(x0); // force copy and conversion
+    x0 = [];        // free memory
+
+    /* Start iterations. */
+    task = 1;
+    eval = 0;
+    stop = 0n;
+    if (verb) {
+        elapsed = array(double, 3);
+        timer, elapsed;
+        wall_start = elapsed(3);
+        print_header = (! use_printer);
+        last_print_iter = -1;
+    }
+    local gx, gnorm, isfree, iter, step;
+    task = ws.task;
+    for (;;) {
+        if (task == OPL_TASK_FG) {
+            /* Evaluate function and gradient. */
+            if (eval >= maxeval) {
+                /* Too many function evaluations.  We restore the variables at
+                   the start of the line search which is a cheap way (no extra
+                   memory cost) to recover variables which should be nearly the
+                   best ones.  We wait until last iteration information have
+                   been printed to stop the iterations. */
+                stop = 1n;
+                msg = swrite(format="too many function evaluations (%d)",
+                             eval);
+                opl_vmlmb_restore, ws, x, fx, gx;
+            } else {
+                if (bounds != 0) {
+                    if ((bounds & 1) == 1) {
+                        x = max(unref(x), xmin);
+                    }
+                    if ((bounds & 2) == 2) {
+                        x = min(unref(x), xmax);
+                    }
+                }
+                fx = (use_extra ? f(x, gx, extra) : f(x, gx));
+                ++eval;
+            }
+        }
+        if (task == OPL_TASK_FREEVARS && bounds != 0) {
+            /* Determine the set of free variables. */
+            isfree = [];
+            if (bounds == 1) {
+                isfree = ((x > xmin) | (gx < 0.0));
+            } else if (bounds == 2) {
+                isfree = ((x < xmax) | (gx > 0.0));
+            } else {
+                isfree = (((x > xmin)|(gx < 0.0)) & ((x < xmax)|(gx > 0.0)));
+            }
+        }
+
+        /* Check for convergence. */
+        if (task >= OPL_TASK_NEWX) {
+            iter = ws.iterations;
+            if (task >= OPL_TASK_WARN) {
+                /* Error or warning. */
+                stop = 1n;
+                msg = ws.reason;
+            } else if (ws.gnorm <= gtest) {
+                stop = 1n;
+                msg = swrite(format="convergence (%s)",
+                             "gradient small enough");
+            } else if (iter >= maxiter) {
+                stop = 1n;
+                msg = swrite(format="too many iterations (%d)", iter);
+            }
+        }
+        if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0) &&
+            iter > last_print_iter) {
+            /* Print information. */
+            if (print_header) {
+                write, output, format="# Method %d (MEM=%d): %s\n#\n",
+                    0, mem, method_name;
+                write, output, format="%s%s\n%s%s\n",
+                    "# Iter.   Time (ms)    Eval. Reject.",
+                    "       Obj. Func.           Grad.       Step",
+                    "# ----------------------------------",
+                    "-----------------------------------------------";
+                print_header = 0n;
+            }
+            timer, elapsed;
+            wall = elapsed(3) - wall_start;
+            step = ws.step;
+            gnorm = ws.gnorm;
+            if (use_printer) {
+                printer, output, iter, eval, wall, fx, gnorm, step, x, extra;
+            } else {
+                write, output,
+                    format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
+                    iter, wall*1e3, eval, 0, fx, gnorm, step;
+            }
+            if (use_viewer) {
+                viewer, x, extra;
+            }
+            last_print_iter = iter;
+        }
+        if (stop) {
+            if (msg && (verb || (task != 3 && ! quiet))) {
+                write, output, format="# %s\n",
+                    strtrim(msg, 2, blank=" \t\v\n\r");
+            }
+            return x;
+        }
+
+        /* Call optimizer. */
+        task = opl_vmlmb_iterate(ws, x, fx, gx, isfree);
+    }
 }
 
 extern _opl_init;
