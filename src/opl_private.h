@@ -159,6 +159,7 @@ struct _opl_vmlmb_workspace {
   double epsilon;
   double gnorm;
   double g0norm;
+  double gamma;
   double* alpha;
   double* rho;
   double* d;

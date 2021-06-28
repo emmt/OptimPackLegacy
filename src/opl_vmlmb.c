@@ -372,6 +372,7 @@ opl_vmlmb_iterate(opl_vmlmb_workspace_t* ws,
       }
       if (isfree == NULL) {
         double sty = opl_ddot(n, Smark, Ymark);
+        ws->gamma = sty/yty;
         ws->rho[ws->mark] = sty;
       }
 
@@ -546,7 +547,7 @@ static void
 compute_direction(opl_vmlmb_workspace_t* ws, double d[],
                   const int isfree[], const double h[])
 {
-  double gamma = 0;
+  double gamma = (isfree == NULL ? ws->gamma : 0);
   long m = ws->m;
   long mp = ws->mp;
   long n = ws->n;
