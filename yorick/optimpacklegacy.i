@@ -214,11 +214,11 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
          keyword VERB above) to printout iteration information.  The subroutine
          will be called as:
 
-            printer, output, iter, eval, cpu, fx, gnorm, steplen, x, extra;
+            printer, output, iter, eval, wall, fx, gnorm, steplen, x, extra;
 
          where OUTPUT is the value of keyword OUTPUT (which to see), ITER is
          the number of iterations, EVAL is the number of function evaluations,
-         CPU is the elapsed CPU time in seconds, FX is the function value at X,
+         WALL is the elapsed time in seconds, FX is the function value at X,
          GNORM is the Euclidean norm of the gradient at X, STEPLEN is the
          length of the step along the search direction, X is the current
          solution and EXTRA is the value of keyword EXTRA (which to see).
@@ -336,7 +336,7 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   if (verb) {
     elapsed = array(double, 3);
     timer, elapsed;
-    cpu_start = elapsed(1);
+    wall_start = elapsed(3);
     print_header = (! use_printer);
     last_print_iter = -1;
   }
@@ -400,20 +400,22 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       if (print_header) {
         write, output, format="# Method %d (MEM=%d): %s\n#\n",
           0, mem, method_name;
-        write, output, format="# %s\n# %s\n",
-          "ITER  EVAL   CPU (ms)        FUNC               GNORM   STEPLEN",
-          "---------------------------------------------------------------";
+        write, output, format="%s%s\n%s%s\n",
+          "# Iter.   Time (ms)    Eval. Reject.",
+          "       Obj. Func.           Grad.       Step",
+          "# ----------------------------------",
+          "-----------------------------------------------";
         print_header = 0n;
       }
       timer, elapsed;
-      cpu = 1e3*(elapsed(1) - cpu_start);
+      wall = elapsed(3) - wall_start;
       step = ws.step;
       gnorm = ws.gnorm;
       if (use_printer) {
-        printer, output, iter, eval, cpu, fx, gnorm, step, x, extra;
+        printer, output, iter, eval, wall, fx, gnorm, step, x, extra;
       } else {
-        write, output, format=" %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
-          iter, eval, cpu, fx, gnorm, step;
+        write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
+          iter, wall*1e3, eval, 0, fx, gnorm, step;
       }
       if (use_viewer) {
         viewer, x, extra;
