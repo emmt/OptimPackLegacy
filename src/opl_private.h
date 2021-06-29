@@ -92,11 +92,11 @@
  * The context structure.
  */
 struct _opl_context {
-  const char*  message;     /* Current message. */
-  opl_status_t status;      /* Status code. */
-  int          syserr;      /* Value of `errno` if status is
-                               `OPL_SYSTEM_ERROR` */
-  char         buffer[128]; /* Internal buffer */
+    const char*  message;     /* Current message. */
+    opl_status_t status;      /* Status code. */
+    int          syserr;      /* Value of `errno` if status is
+                                 `OPL_SYSTEM_ERROR` */
+    char         buffer[128]; /* Internal buffer */
 };
 
 /** Global message for successful operation. */
@@ -119,52 +119,52 @@ opl_status_t  _OPL_FORCE_INLINE _opl_success(opl_context_t* ctx)
  * Workspace data used for Moré & Thuente line search.
  */
 struct _opl_csrch_workspace {
-  opl_context_t context;
-  double        ftol, gtol, xtol;
-  double        stpmin, stpmax;
-  double        finit;
-  double        ginit;
-  double        stx, fx, gx;
-  double        sty, fy, gy;
-  double        stmin, stmax;
-  double        width, width1;
-  opl_task_t    task;
-  int           stage;
-  opl_boolean_t brackt;
+    opl_context_t context;
+    double        ftol, gtol, xtol;
+    double        stpmin, stpmax;
+    double        finit;
+    double        ginit;
+    double        stx, fx, gx;
+    double        sty, fy, gy;
+    double        stmin, stmax;
+    double        width, width1;
+    opl_task_t    task;
+    int           stage;
+    opl_boolean_t brackt;
 };
 
 /**
  * The workspace for VMLMB.
  */
 struct _opl_vmlmb_workspace {
-  opl_csrch_workspace_t lnsrch;
-  long n;
-  long m;
-  long mp;
-  long mark;
-  long evaluations;
-  long iterations;
-  long restarts;
-  int searching; /**< a line search is in progress */
-  unsigned int flags;
-  void (*free)(void*);
-  double frtol;
-  double fatol;
-  double fmin;
-  double f0;
-  double gd;
-  double g0d;
-  double stp;
-  double delta;
-  double epsilon;
-  double gnorm;
-  double g0norm;
-  double gamma;
-  double* alpha;
-  double* rho;
-  double* d;
-  double** S;
-  double** Y;
+    opl_csrch_workspace_t lnsrch;
+    long n;
+    long m;
+    long mp;
+    long mark;
+    long evaluations;
+    long iterations;
+    long restarts;
+    int searching; /**< a line search is in progress */
+    unsigned int flags;
+    void (*free)(void*);
+    double frtol;
+    double fatol;
+    double fmin;
+    double f0;
+    double gd;
+    double g0d;
+    double stp;
+    double delta;
+    double epsilon;
+    double gnorm;
+    double g0norm;
+    double gamma;
+    double* alpha;
+    double* rho;
+    double* d;
+    double** S;
+    double** Y;
 };
 
 #endif /* _OPL_PRIVATE_H */

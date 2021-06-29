@@ -40,8 +40,8 @@
 #define ISFREE_LO_DIR(x, lo, d) (((x) > (lo)) | ((d) > 0))
 #define ISFREE_HI_DIR(x, hi, d) (((x) < (hi)) | ((d) < 0))
 
-#define MIN(a,b) ((a) <= (b) ? (a) : (b))
-#define MAX(a,b) ((a) >= (b) ? (a) : (b))
+#define MIN(a, b) ((a) <= (b) ? (a) : (b))
+#define MAX(a, b) ((a) >= (b) ? (a) : (b))
 
 #define ENCODE(T, sfx)                                  \
     static inline T min##sfx(T a, T b) {                \
