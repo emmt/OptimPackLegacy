@@ -113,7 +113,9 @@ static void compute_direction(
     opl_vmlmb_workspace_t* ws,
     double d[],
     const int isfree[],
-    const double h[]);
+    const double h[],
+#define PROJECT_INPUT (1 << 0)
+    unsigned flags);
 
 /* Compute next step and set task. */
 static opl_task_t next_step(
@@ -353,7 +355,7 @@ opl_task_t opl_vmlmb_iterate(
         return success(ws, OPL_TASK_FREEVARS, "determine free variables");
 
     case OPL_TASK_FREEVARS:
-        /* Copy the (projected) gradient into D and compute the norm of the
+        /* Copy the (projected) gradient into `d` and compute the norm of the
            (projected) gradient. */
         if (check_free(ws, isfree, h) != 0) {
             break;
@@ -413,11 +415,12 @@ opl_task_t opl_vmlmb_iterate(
     case OPL_TASK_NEWX:
     case OPL_TASK_CONV:
     case OPL_TASK_WARN:
-        /* Compute a new search direction.  D already contains the (projected)
-           gradient. */
+        /* Compute a new search direction. */
         if (ws->mp > 0) {
-            /* Apply L-BFGS recursion to compute a search direction. */
-            compute_direction(ws, d, isfree, h);
+            /* Apply L-BFGS recursion to compute a search direction.  Vector
+               `d` is already the projected gradient so there is no needs to
+               project it. */
+            compute_direction(ws, d, isfree, h, 0);
             if (ws->mp > 0) {
                 /* Set initial step size and compute dot product of gradient
                    and search direction.  If L-BFGS recursion failed to produce
@@ -442,8 +445,8 @@ opl_task_t opl_vmlmb_iterate(
         }
 
         if (ws->mp == 0) {
-            /* Compute initial search direction (or after a restart).  D is
-               already the (projected) gradient. */
+            /* Compute initial search direction (or after a restart).  Vector
+               `d` is already the (projected) gradient. */
             if (h != NULL) {
                 /* Use diagonal preconditioner to compute initial search
                    direction. */
@@ -458,7 +461,7 @@ opl_task_t opl_vmlmb_iterate(
                 }
             } else {
                 /* No preconditioning, use a small step along the steepest
-                 * descent. */
+                   descent. */
                 if (ws->delta > 0) {
                     ws->stp = (opl_dnrm2(n, x)/ws->gnorm)*ws->delta;
                 } else {
@@ -570,7 +573,8 @@ static void compute_direction(
     opl_vmlmb_workspace_t* ws,
     double d[],
     const int isfree[],
-    const double h[])
+    const double h[],
+    unsigned flags)
 {
     double gamma = (isfree == NULL ? ws->gamma : 0);
     long m = ws->m;
@@ -584,6 +588,16 @@ static void compute_direction(
 
 # define S(j) S_[j]
 # define Y(j) Y_[j]
+
+    /* Project entry vector on the sub-space of the free variables if
+       needed. */
+    if (isfree != NULL && (flags & PROJECT_INPUT) != 0) {
+        for (long i = 0; i < n; ++i) {
+            if (!isfree[i]) {
+                d[i] = 0;
+            }
+        }
+    }
 
     /* First loop of the L-BFGS recursion. */
     for (long k = 1; k <= mp; ++k) {
@@ -605,17 +619,17 @@ static void compute_direction(
 
     /* Apply initial approximation of the inverse Hessian. */
     if (h != NULL) {
-        /* Apply diagonal preconditioner. */
+        /* Apply diagonal preconditioner `h`. */
         for (long i = 0; i < n; ++i) {
             d[i] *= h[i];
         }
     } else if (gamma > 0) {
-        /* Apply initial H (i.e. just scale D) and perform the second stage of
-           the 2-loop recursion. */
+        /* Just scale `d` by `gamma`. */
         opl_dscal(n, gamma, d);
     } else {
         /* All correction pairs are invalid: manage to restart the L-BFGS
-           recursion.  Note that D is left unchanged in that case. */
+           recursion.  Note that `d` is left unchanged in that case except for
+           being projected. */
         ++ws->restarts;
         ws->mp = 0;
         return;

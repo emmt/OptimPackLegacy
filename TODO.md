@@ -2,9 +2,6 @@
 
 ## For release 1.5.0
 
-* Computation of `alpha` in BFGS iteration has been fixed.  Pre-multiply input
-  vector by the `isfree` mask.
-
 * Scale initial/restart gradient.  Perhaps use a typical value for the step
   norm `delta`, eigenvalue `lambda` of Hessian, least function value `fmin`.
 
