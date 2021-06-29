@@ -10,6 +10,15 @@
   information when minimizing a (slightly) different objective function while
   the variables and the algorithm settings remain the same.
 
+* New strategy to determine a trial step length for an initial/restart search
+  direction (projected steepest descent) using one of (in that order): an
+  estimate `fmin` of the minimal value of the objective function, a small step
+  size `delta` relative to the norm of the variables, or an estimate `lambda`
+  of the magnitude of the eigenvalues of the Hessian of the objective function.
+  If the least function value `fmin` is specified, it is no longer an error
+  when `f(x) < fmin` (`fmin` is only used to determine the initial step length
+  if `fmin < f(x)`).
+
 * Scaling parameter `gamma` is computed once if there are no constraints.
 
 * Code is in standard C99.

@@ -2,11 +2,6 @@
 
 ## For release 1.5.0
 
-* Scale initial/restart gradient.  Perhaps use a typical value for the step
-  norm `delta`, eigenvalue `lambda` of Hessian, least function value `fmin`.
-
-* Better use `fmin` (see above).
-
 * Safeguard the step when there are bounds.
 
 * Fix Python interface.

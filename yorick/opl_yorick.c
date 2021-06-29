@@ -77,6 +77,7 @@ static long index_of_sgtol = -1;
 static long index_of_sxtol = -1;
 static long index_of_delta = -1;
 static long index_of_epsilon = -1;
+static long index_of_lambda = -1;
 static long index_of_status = -1;
 static long index_of_reason = -1;
 
@@ -320,6 +321,8 @@ static void vmlmb_extract(
         ypush_double(opl_vmlmb_get_delta(obj->ws));
     } else if (index == index_of_epsilon) {
         ypush_double(opl_vmlmb_get_epsilon(obj->ws));
+    } else if (index == index_of_lambda) {
+        ypush_double(opl_vmlmb_get_lambda(obj->ws));
     } else if (index == index_of_size) {
         ypush_long(obj->n);
     } else if (index == index_of_mem) {
@@ -365,6 +368,7 @@ void Y_opl_vmlmb_create(
     int sxtol_iarg = -1;
     int delta_iarg = -1;
     int epsilon_iarg = -1;
+    int lambda_iarg = -1;
 
     /* Parse arguments. */
     for (int iarg = argc - 1; iarg >= 0; --iarg) {
@@ -403,6 +407,8 @@ void Y_opl_vmlmb_create(
                 delta_iarg = iarg;
             } else if (index == index_of_epsilon) {
                 epsilon_iarg = iarg;
+            } else if (index == index_of_lambda) {
+                lambda_iarg = iarg;
             } else {
                 y_error("unsupported keyword");
             }
@@ -450,8 +456,9 @@ void Y_opl_vmlmb_create(
     SET_ATTRIBUTE(sftol, value <= 0 || value >= 1);
     SET_ATTRIBUTE(sgtol, value <= 0 || value >= 1);
     SET_ATTRIBUTE(sxtol, value <= 0 || value >= 1);
-    SET_ATTRIBUTE(delta, value < 0);
+    SET_ATTRIBUTE(delta, value < 0 || value >= 1);
     SET_ATTRIBUTE(epsilon, value < 0);
+    SET_ATTRIBUTE(lambda, value < 0);
 # undef SET_ATTRIBUTE
 
 }
@@ -469,6 +476,7 @@ void Y_opl_vmlmb_configure(
     int sxtol_iarg = -1;
     int delta_iarg = -1;
     int epsilon_iarg = -1;
+    int lambda_iarg = -1;
 
     /* Parse arguments. */
     for (int iarg = argc - 1; iarg >= 0; --iarg) {
@@ -502,6 +510,8 @@ void Y_opl_vmlmb_configure(
                 delta_iarg = iarg;
             } else if (index == index_of_epsilon) {
                 epsilon_iarg = iarg;
+            } else if (index == index_of_lambda) {
+                lambda_iarg = iarg;
             } else {
                 y_error("unsupported keyword");
             }
@@ -526,8 +536,9 @@ void Y_opl_vmlmb_configure(
     SET_ATTRIBUTE(sftol, value <= 0 || value >= 1);
     SET_ATTRIBUTE(sgtol, value <= 0 || value >= 1);
     SET_ATTRIBUTE(sxtol, value <= 0 || value >= 1);
-    SET_ATTRIBUTE(delta, value < 0);
+    SET_ATTRIBUTE(delta, value < 0 || value >= 1);
     SET_ATTRIBUTE(epsilon, value < 0);
+    SET_ATTRIBUTE(lambda, value < 0);
 # undef SET_ATTRIBUTE
 
     /* Manage to left WS on top of the stack. */
@@ -643,6 +654,7 @@ void Y__opl_init(
     INIT(sxtol);
     INIT(delta);
     INIT(epsilon);
+    INIT(lambda);
     INIT(status);
     INIT(reason);
 #undef INIT

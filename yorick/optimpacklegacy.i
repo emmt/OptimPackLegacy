@@ -62,11 +62,13 @@ extern opl_vmlmb_create;
        ws.sxtol ............ Relative tolerance for an acceptable step.
        ws.delta ............ Relative size of a small step.
        ws.epsilon .......... Threshold for the sufficient descent condition.
+       ws.lambda ........... Magnitude of the eigenvalues of the Hessian of the
+                             objective function.
 
-     Attributes FMIN, FATOL, FRTOL, SFTOL, SGTOL, SXTOL, DELTA and EPSILON are
-     configurable via keywords when calling `opl_vmlmb_create`, they may be
-     configure later with `opl_vmlmb_configure`.  The other attributes are
-     read-only.
+     Attributes FMIN, FATOL, FRTOL, SFTOL, SGTOL, SXTOL, DELTA, EPSILON, and
+     LAMBDA are configurable via keywords when calling `opl_vmlmb_create`, they
+     may be configure later with `opl_vmlmb_configure`.  The other attributes
+     are read-only.
 
      It not recommended to have MEM larger than the number of variables and it
      is often the case that a modest value for MEM, say MEM=5, is as efficient
@@ -154,8 +156,9 @@ extern opl_vmlmb_warm_restart;
    SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate, opl_vmlmb_restart.
 */
 
-func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
+func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, mem=,
                verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
+               delta=, epsilon=, lambda=,
                frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)
 /* DOCUMENT opl_vmlmb(f, x0);
          or opl_vmlmb(f, x0, fout, gout);
@@ -181,6 +184,13 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
 
 
    KEYWORDS
+
+     FMIN - An estimate of the minimal value of the objective function.
+
+     DELTA - A small step size relative to the norm of the variables.
+
+     LAMBDA - An estimate of the magnitude of the eigenvalues of the Hessian of
+         the objective function.
 
      EXTRA - Supplemental argument for F; if non-nil, F is called as
          F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).  It is
@@ -335,7 +345,8 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
     if (is_void(mem)) mem = min(numberof(x0), 7);
     method_name = swrite(format="VMLMB %s bounds and MEM=%d",
                          (bounds != 0 ? "with" : "without"), mem);
-    ws = opl_vmlmb_create(dims, mem, fmin=fmin,
+    ws = opl_vmlmb_create(dims, mem, fmin=fmin, delta=delta,
+                          epsilon=epsilon, lambda=lambda,
                           fatol=fatol, frtol=frtol,
                           sftol=sftol, sgtol=sgtol, sxtol=sxtol);
 

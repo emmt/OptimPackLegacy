@@ -79,6 +79,7 @@ static const double Inf = CHOICE_(INFINITY, 1.0/0.0);
 #define DEFAULT_FRTOL    1e-10
 #define DEFAULT_DELTA    1e-3
 #define DEFAULT_EPSILON  0.0
+#define DEFAULT_LAMBDA   NaN
 
 #define FLAG_FMIN        (1 << 0)
 
@@ -116,6 +117,30 @@ static void compute_direction(
     const double h[],
 #define PROJECT_INPUT (1 << 0)
     unsigned flags);
+
+/* Determine the length of the first trial step along the steepest descent
+   direction.   Based on:
+
+   - `x` the current variables (or their Euclidean norm).
+
+   - `d` the search direction `d` (or its Euclidean norm) at `x`.  This
+     direction shall be the gradient (or the projected gradient for a
+     constrained problem) at `x` up to a change of sign.
+
+   - `fx` the value of the objective function at `x`.
+
+   - `fmin` an estimate of the minimal value of the objective function.
+
+   - `delta` a small step size relative to the norm of the variables.
+
+   - `lambda` an estimate of the magnitude of the eigenvalues of the
+     Hessian of the objective function.
+*/
+static double steepest_descent_step(
+    const opl_vmlmb_workspace_t* ws,
+    const double x[],
+    double dnorm,
+    double f);
 
 /* Compute next step and set task. */
 static opl_task_t next_step(
@@ -167,6 +192,7 @@ GET_MEMBER(double, fatol, ws->fatol, NaN);
 GET_MEMBER(double, frtol, ws->frtol, NaN);
 GET_MEMBER(double, delta, ws->delta, NaN);
 GET_MEMBER(double, epsilon, ws->epsilon, NaN);
+GET_MEMBER(double, lambda, ws->lambda, NaN);
 GET_MEMBER(double, sxtol, SXTOL(ws), NaN);
 GET_MEMBER(double, sftol, SFTOL(ws), NaN);
 GET_MEMBER(double, sgtol, SGTOL(ws), NaN);
@@ -191,12 +217,7 @@ opl_status_t opl_vmlmb_set_fmin(
         errno = EFAULT;
         return OPL_ILLEGAL_ADDRESS;
     }
-    if (isnan(value) || value < -DBL_MAX) {
-        ws->flags &= ~FLAG_FMIN;
-        ws->fmin = NaN;
-    } else {
-        ws->fmin = value;
-    }
+    ws->fmin = value;
     return OPL_SUCCESS;
 }
 
@@ -221,6 +242,7 @@ SET_MEMBER(fatol, ws->fatol, value < 0);
 SET_MEMBER(frtol, ws->frtol, value < 0);
 SET_MEMBER(delta, ws->delta, value < 0);
 SET_MEMBER(epsilon, ws->epsilon, value < 0);
+SET_MEMBER(lambda, ws->lambda, value < 0);
 SET_MEMBER(sxtol, SXTOL(ws), value <= 0 || value >= 1);
 SET_MEMBER(sftol, SFTOL(ws), value <= 0 || value >= 1);
 SET_MEMBER(sgtol, SGTOL(ws), value <= 0 || value >= 1);
@@ -301,7 +323,6 @@ opl_task_t opl_vmlmb_iterate(
     double* d = ws->d;
     double** S_ = ws->S;
     double** Y_ = ws->Y;
-    int have_fmin = ((ws->flags & FLAG_FMIN) != 0);
 
 # define S(j) S_[j]
 # define Y(j) Y_[j]
@@ -312,9 +333,6 @@ opl_task_t opl_vmlmb_iterate(
         /* Caller has performed a new evaluation of the function and its
            gradient. */
         ++ws->evaluations;
-        if (have_fmin && *f <= ws->fmin) {
-            return failure(ws, OPL_F_LE_FMIN, "initial F <= FMIN");
-        }
         if (ws->searching) {
             /* A line seach is in progress.  Check for convergence of this
              * search. */
@@ -462,17 +480,7 @@ opl_task_t opl_vmlmb_iterate(
             } else {
                 /* No preconditioning, use a small step along the steepest
                    descent. */
-                if (ws->delta > 0) {
-                    ws->stp = (opl_dnrm2(n, x)/ws->gnorm)*ws->delta;
-                } else {
-                    ws->stp = 0;
-                }
-                if (ws->stp <= 0) {
-                    /* The following step length is quite arbitrary but to
-                       avoid this would require to know the typical size of the
-                       variables. */
-                    ws->stp = 1.0/ws->gnorm;
-                }
+                ws->stp = steepest_descent_step(ws, x, ws->gnorm, *f);
                 ws->gd = -ws->gnorm*ws->gnorm;
             }
         }
@@ -490,7 +498,7 @@ opl_task_t opl_vmlmb_iterate(
 #if 1
         stpmax = DEFAULT_STPMAX;
 #else
-        if (have_fmin) {
+        if (!isnan(ws->fmin))) {
             stpmax = (ws->fmin - ws->f0)/(SGTOL(ws)*ws->g0d);
         } else {
             double temp = fabs(ws->f0);
@@ -529,6 +537,54 @@ opl_task_t opl_vmlmb_iterate(
 # undef SUCCESS
 # undef FAILURE
 
+}
+
+static double steepest_descent_step(
+    const opl_vmlmb_workspace_t* ws,
+    const double x[],
+    double dnorm,
+    double f)
+{
+    /* For a quadratic objective function, the minimum is such that:
+     *
+     *     fmin = f(x) - (1/2)*alpha*d'*∇f(x)
+     *
+     * with `alpha` the optimal step.  Hence:
+     *
+     *     alpha = 2*(f(x) - fmin)/(d'*∇f(x)) = 2*(f(x) - fmin)/‖d‖²
+     *
+     * is an estimate of the step size along `d` if it is plus or minus the
+     * (projected) gradient.
+     */
+    double fmin = ws->fmin;
+    if (isfinite(fmin) && f > fmin) {
+        double alpha = 2*(f - fmin)/(dnorm*dnorm);
+        if (isfinite(alpha) && alpha > 0) {
+            return alpha;
+        }
+    }
+
+    /* Use the specified small relative step size. */
+    double delta = ws->delta;
+    if (isfinite(delta) && delta > 0 && delta < 1) {
+        double xnorm = opl_dnrm2(ws->n, x);
+        double alpha = delta*(xnorm/dnorm);
+        if (isfinite(alpha) && alpha > 0) {
+            return alpha;
+        }
+    }
+
+    /* Use typical Hessian eigenvalue if suitable. */
+    double lambda = ws->lambda;
+    if (isfinite(lambda) && lambda > 0) {
+        double alpha = 1/lambda;
+        if (isfinite(alpha) && alpha > 0) {
+            return alpha;
+        }
+    }
+
+    /* Eventually use `alpha = 1/‖d‖`. */
+    return 1/dnorm;
 }
 
 /*
@@ -790,6 +846,7 @@ opl_vmlmb_workspace_t* opl_vmlmb_set_defaults(
     ws->frtol = DEFAULT_FRTOL;
     ws->delta = DEFAULT_DELTA;
     ws->epsilon = DEFAULT_EPSILON;
+    ws->lambda = DEFAULT_LAMBDA;
     opl_vmlmb_set_fmin(ws, NaN);
     return ws;
 }

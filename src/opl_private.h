@@ -146,7 +146,6 @@ struct _opl_vmlmb_workspace {
     long iterations;
     long restarts;
     int searching; /**< a line search is in progress */
-    unsigned int flags;
     void (*free)(void*);
     double frtol;
     double fatol;
@@ -157,6 +156,7 @@ struct _opl_vmlmb_workspace {
     double stp;
     double delta;
     double epsilon;
+    double lambda;
     double gnorm;
     double g0norm;
     double gamma;

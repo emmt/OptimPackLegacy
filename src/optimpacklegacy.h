@@ -990,6 +990,10 @@ extern opl_status_t opl_vmlmb_set_epsilon(
     opl_vmlmb_workspace_t* ws,
     double value);
 
+extern opl_status_t opl_vmlmb_set_lambda(
+    opl_vmlmb_workspace_t* ws,
+    double value);
+
 extern opl_status_t opl_vmlmb_set_sxtol(
     opl_vmlmb_workspace_t* ws,
     double value);
@@ -1026,10 +1030,13 @@ extern double opl_vmlmb_get_frtol(
 extern double opl_vmlmb_get_fatol(
     opl_vmlmb_workspace_t* ws);
 
+extern double opl_vmlmb_get_delta(
+    opl_vmlmb_workspace_t* ws);
+
 extern double opl_vmlmb_get_epsilon(
     opl_vmlmb_workspace_t* ws);
 
-extern double opl_vmlmb_get_delta(
+extern double opl_vmlmb_get_lambda(
     opl_vmlmb_workspace_t* ws);
 
 extern double opl_vmlmb_get_step(
