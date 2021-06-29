@@ -71,7 +71,7 @@ def get_message(code) -> str:
     """`get_message(code)` yields the textual message corresponding to the
     value of `code` (an integer returned by one of the functions of the
     OptimPackLegacy library."""
-    return copl.opl_get_default_message(code)#.decode("utf-8")
+    return copl.opl_get_default_message(code).decode("utf-8")
 
 def clamp(x, lo = None, hi = None):
     """`clamp(x, lo = None, hi = None)` yields the result of clamping the values
@@ -440,7 +440,7 @@ cdef class VMLMB:
     def get_reason(self) -> str:
         """Yield a textual explanation of the next task to perform or of the
         current error if any."""
-        return copl.opl_vmlmb_get_reason(self._ws)#.decode("utf-8")
+        return copl.opl_vmlmb_get_reason(self._ws).decode("utf-8")
 
     def get_task(self):
         """Yield the next task to perform."""
