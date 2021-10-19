@@ -88,7 +88,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
                 mexErrMsgTxt("The fifth input isfree must be an integer vector or an empty vector");
             if (mxGetM(prhs[4])*mxGetN(prhs[4])!=n)
                 mexErrMsgTxt("Incorrect dimension for the fourth input vector active");
-            isfree = (opl_integer_t *)mxGetPr(prhs[4]);
+            isfree = (int *)mxGetPr(prhs[4]);
         }
     }else{
         isfree=NULL;
