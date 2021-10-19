@@ -1,10 +1,4 @@
-## Version 1.5.0 (2019-XX-XX)
-
-* A Python interface to VMLM-B is provided (thanks to Romain Fetick).
-
-* Array dimensions and indices are now `long`.
-
-* Compilation and installation is much easier thanks to GNU-autoconf tools.
+## Version 1.5.0 (2021-XX-XX)
 
 * With `VMLMB`, **warm starting** is possible to re-use the collected Hessian
   information when minimizing a (slightly) different objective function while
@@ -18,6 +12,12 @@
   If the least function value `fmin` is specified, it is no longer an error
   when `f(x) < fmin` (`fmin` is only used to determine the initial step length
   if `fmin < f(x)`).
+
+* A Python interface to VMLM-B is provided (thanks to Romain Fetick).
+
+* Array dimensions and indices are now `long`.
+
+* Compilation and installation is much easier thanks to GNU-autoconf tools.
 
 * Scaling parameter `gamma` is computed once if there are no constraints.
 
