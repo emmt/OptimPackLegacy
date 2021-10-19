@@ -1,4 +1,4 @@
-/* 
+/*
  *  m_opl_vmlmb_create.c
  *
  * function m_opl_vmlmb_create
@@ -36,27 +36,27 @@
 #define TRUE  1
 #define FALSE 0
 
-void mexFunction( int nlhs, mxArray *plhs[],    
+void mexFunction( int nlhs, mxArray *plhs[],
                   int nrhs, const mxArray *prhs[] )
-{ 
+{
     double fatol, frtol, sftol, sgtol, sxtol, epsilon, delta;
-    long n, m,size, fmin=FALSE;
+    long n, m, size, fmin=FALSE;
     mwSize dims[]={1,1};
     opl_vmlmb_workspace_t* ws;
-      /* Control of the number of inputs and outputs */ 
+      /* Control of the number of inputs and outputs */
     if (nrhs > 9)
-        mexErrMsgTxt("9 input argument required."); 
-    else if (nlhs !=1) 
+        mexErrMsgTxt("9 input argument required.");
+    else if (nlhs !=1)
         mexErrMsgTxt("1 output argument required.");
-    
-  
+
+
     /* Control of the inputs*/
     if (!mxIsNumeric(prhs[0]) || !mxIsScalar(prhs[0]) || !mxIsNumeric(prhs[1]) || !mxIsScalar(prhs[1])
         || !mxIsNumeric(prhs[2]) || !mxIsScalar(prhs[2]) || !mxIsNumeric(prhs[3]) || !mxIsScalar(prhs[3])
         || !mxIsNumeric(prhs[4]) || !mxIsScalar(prhs[4]) || !mxIsNumeric(prhs[5]) || !mxIsScalar(prhs[5])
         || !mxIsNumeric(prhs[6]) || !mxIsScalar(prhs[6]) || !mxIsNumeric(prhs[7]) || !mxIsScalar(prhs[7])
-        || !mxIsNumeric(prhs[8]) || !mxIsScalar(prhs[8]) ) 
-        mexErrMsgTxt("The 9 input must be scalar."); 
+        || !mxIsNumeric(prhs[8]) || !mxIsScalar(prhs[8]) )
+        mexErrMsgTxt("The 9 input must be scalar.");
 
     if ( (double )(int )mxGetScalar(prhs[0]) != mxGetScalar(prhs[0]) )
         mexErrMsgTxt("The first input n must be an integer.");
@@ -71,13 +71,13 @@ void mexFunction( int nlhs, mxArray *plhs[],
     sxtol    = mxGetScalar(prhs[6]);
     epsilon  = mxGetScalar(prhs[7]);
     delta = mxGetScalar(prhs[8]);
-    
+
     size = opl_vmlmb_monolithic_workspace_size(n, m);
     dims[1] = size;
     plhs[0] = mxCreateNumericArray(2,dims,mxINT8_CLASS,mxREAL);
-    
+
     ws = opl_vmlmb_monolithic_workspace_init((char *)mxGetPr(plhs[0]), n, m);
-    
+
     if (ws == NULL) {
     if (errno == ENOMEM) {
       mexErrMsgTxt("insufficient memory");
@@ -103,4 +103,3 @@ void mexFunction( int nlhs, mxArray *plhs[],
 # undef SET_ATTRIBUTE
 
 }
-
