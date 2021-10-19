@@ -199,16 +199,15 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
      OUPTPUT - Output for verbose mode.  For instance, text file stream opened
          for writing.
 
-     VIEWER - User defined subroutine to call every VERB iterations (see
-         keyword VERB above)to display the solution X.  The subroutine will be
-         called as:
+     VIEWER - User defined subroutine to call every iterations to display the
+         solution X.  The subroutine will be called as:
 
-            viewer, x, extra;
+            viewer, x, extra, ws;
 
-         where X is the current solution and EXTRA is the value of keyword
-         EXTRA (which to see).  If the viewer uses Yorick graphics window(s) it
-         may call "pause, 1;" before returning to make sure that graphics get
-         correctly updated.
+         where X is the current solution, EXTRA is the value of keyword EXTRA
+         (which to see), and WS is the VMLMB workspace (see opl_vmlmb_create).
+         If the viewer uses Yorick graphics window(s) it may call "pause, 1;"
+         before returning to make sure that graphics get correctly updated.
 
      PRINTER - User defined subroutine to call every VERB iterations (see
          keyword VERB above) to printout iteration information.  The subroutine
@@ -393,6 +392,9 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         stop = 1n;
         msg = swrite(format="too many iterations (%d)", iter);
       }
+      if (use_viewer) {
+        viewer, x, extra, ws;
+      }
     }
     if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0) &&
         iter > last_print_iter) {
@@ -416,9 +418,6 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       } else {
         write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
           iter, wall*1e3, eval, 0, fx, gnorm, step;
-      }
-      if (use_viewer) {
-        viewer, x, extra;
       }
       last_print_iter = iter;
     }
