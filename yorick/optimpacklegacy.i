@@ -138,18 +138,17 @@ extern opl_vmlmb_restart;
    SEE ALSO opl_vmlmb_create, opl_vmlmb_iterate.
 */
 
-func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
+func opl_vmlmb(fg, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
                verb=, quiet=, viewer=, printer=, maxiter=, maxeval=, output=,
                frtol=, fatol=, gatol=, grtol=, sftol=, sgtol=, sxtol=)
-/* DOCUMENT opl_vmlmb(f, x0);
-         or opl_vmlmb(f, x0, fout, gout);
+/* DOCUMENT opl_vmlmb(fg, x0);
+         or opl_vmlmb(fg, x0, fout, gout);
 
-     Returns a minimum of a multivariate function F by an iterative
+     Returns a minimum of a multivariate function F(X) by an iterative
      minimization algorithm (limited memory variable metric) possibly with
-     simple bound constraints on the parameters.  F is the function
-     to minimize, its prototype is:
+     simple bound constraints on the parameters.  Argument FG is callable as:
 
-         func f(x, &gx) {
+         func fg(x, &gx) {
              fx = ....; // compute function value at X
              gx = ....; // store gradient of F in GX
              return fx; // return F(X)
@@ -166,9 +165,9 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
 
    KEYWORDS
 
-     EXTRA - Supplemental argument for F; if non-nil, F is called as
-         F(X,GX,EXTRA) so its prototype must be: func F(x, &gx, extra).  It is
-         however more flexible to use a closure for F if additional data is
+     EXTRA - Supplemental argument for FG; if non-nil, FG is called as
+         FG(X,GX,EXTRA) so its prototype must be: func FG(x, &gx, extra).  It is
+         however more flexible to use a closure for FG if additional data is
          needed.
 
      XMIN, XMAX - Lower/upper bounds for X.  Must be conformable with X.  For
@@ -202,25 +201,28 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
      VIEWER - User defined subroutine to call every iterations to display the
          solution X.  The subroutine will be called as:
 
-            viewer, x, extra, ws;
+            viewer, x, fg_or_extra, ws;
 
-         where X is the current solution, EXTRA is the value of keyword EXTRA
-         (which to see), and WS is the VMLMB workspace (see opl_vmlmb_create).
-         If the viewer uses Yorick graphics window(s) it may call "pause, 1;"
-         before returning to make sure that graphics get correctly updated.
+         where X is the current solution, FG_OR_EXTRA is FG or EXTRA (depending
+         whether keyword EXTRA is void or not) and WS is the VMLMB workspace
+         (see opl_vmlmb_create).  If the viewer uses Yorick graphics window(s)
+         it may call "pause, 1;" before returning to make sure that graphics
+         get correctly updated.
 
      PRINTER - User defined subroutine to call every VERB iterations (see
          keyword VERB above) to printout iteration information.  The subroutine
          will be called as:
 
-            printer, output, iter, eval, wall, fx, gnorm, steplen, x, extra;
+            printer, output, iter, eval, wall, fx, gnorm, steplen, x,
+                     fg_or_extra;
 
          where OUTPUT is the value of keyword OUTPUT (which to see), ITER is
          the number of iterations, EVAL is the number of function evaluations,
          WALL is the elapsed time in seconds, FX is the function value at X,
          GNORM is the Euclidean norm of the gradient at X, STEPLEN is the
          length of the step along the search direction, X is the current
-         solution and EXTRA is the value of keyword EXTRA (which to see).
+         solution and FG_OR_EXTRA is FG or EXTRA (depending whether keyword
+         EXTRA is void or not).
 
      SFTOL, SGTOL, SXTOL - Line search tolerance and safeguard parameters (see
         opl_csrch).
@@ -232,10 +234,12 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
   LONG_MAX = (1 << (sizeof(long)*8 - 1)) - 1;
 
   /* Get function. */
-  if (is_void(f) || is_array(f)) {
-    error, "expecting a function for argument F";
+  if (is_void(fg) || is_array(fg)) {
+    error, "expecting a function for argument FG";
   }
   use_extra = (! is_void(extra));
+  local fg_or_extra;
+  eq_nocopy, fg_or_extra, (is_void(extra) ? fg : extra);
 
   /* Starting parameters. */
   if ((s = structof(x0)) != double && s != float && s != long &&
@@ -362,7 +366,7 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
             x = min(unref(x), xmax);
           }
         }
-        fx = (use_extra ? f(x, gx, extra) : f(x, gx));
+        fx = (use_extra ? fg(x, gx, extra) : fg(x, gx));
         ++eval;
       }
     }
@@ -393,7 +397,7 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
         msg = swrite(format="too many iterations (%d)", iter);
       }
       if (use_viewer) {
-        viewer, x, extra, ws;
+        viewer, x, fg_or_extra, ws;
       }
     }
     if (verb && (stop || task >= OPL_TASK_NEWX && (iter % verb) == 0) &&
@@ -414,7 +418,7 @@ func opl_vmlmb(f, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
       step = ws.step;
       gnorm = ws.gnorm;
       if (use_printer) {
-        printer, output, iter, eval, wall, fx, gnorm, step, x, extra;
+        printer, output, iter, eval, wall, fx, gnorm, step, x, fg_or_extra;
       } else {
         write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
           iter, wall*1e3, eval, 0, fx, gnorm, step;
