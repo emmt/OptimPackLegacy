@@ -198,7 +198,7 @@ func opl_vmlmb(fg, x0, &fx, &gx, fmin=, extra=, xmin=, xmax=, flags=, mem=,
      OUPTPUT - Output for verbose mode.  For instance, text file stream opened
          for writing.
 
-     VIEWER - User defined subroutine to call every iterations to display the
+     VIEWER - User defined subroutine to call at each iteration to display the
          solution X.  The subroutine will be called as:
 
             viewer, x, fg_or_extra, ws;
