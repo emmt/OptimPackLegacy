@@ -12,6 +12,12 @@ Adhering to [Semantic Versioning](https://semver.org/spec) is a work in progress
 
 * Compilation and installation is much easier thanks to GNU-autoconf tools.
 
+## Version 1.4.3 (2025-04-10)
+
+* The version of `OptimPackLegacy` is inferred from the first line as the above
+  one. The command `make tag` prints a list of shell commands to tag the
+  current version and push it on the remote repository.
+
 ## Version 1.4.2 (2022-03-26)
 
 ## Changed

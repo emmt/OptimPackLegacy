@@ -29,19 +29,19 @@
 
 srcdir = .
 
-VERSION = `sed < VERSION -e 's/ //g'`
-SUBDIRS = yorick idl src
+VERSION := $(shell grep -i -m 1 '^##* * VERSION  *[0-9.][0-9.]*' < NEWS.md | sed -e 's/^[^0-9]*\([0-9.]*\).*/\1/')
+SUBDIRS := yorick idl src
 
 DISTRIB_SRC = $(srcdir)
 DISTRIB_FILES = AUTHORS LICENSE Makefile NEWS.md README.md TODO.md \
     optimpack.bib
 
 CODE_SRC = $(srcdir)/src
-CODE_FILES = opl_algebra.c opl_lnsrch.c opl_vmlmb.c opl_utils.c \
+CODE_FILES := opl_algebra.c opl_lnsrch.c opl_vmlmb.c opl_utils.c \
      opl_limits.h  opl_private.h optimpacklegacy.h
 
 YORICK_SRC = $(srcdir)/yorick
-YORICK_FILES = Makefile opl_yorick.c optimpacklegacy.i \
+YORICK_FILES := Makefile opl_yorick.c optimpacklegacy.i \
     optimpacklegacy-start.i \
     optimpacklegacy-tests.i optimpacklegacy-tests.out
 
@@ -99,6 +99,13 @@ distrib:
 	echo "archive $$archive created"; \
 	return 0
 
+tag:
+	@version=$(VERSION); \
+	echo "To tag this version, type:"; \
+	echo "   git tag -m 'Release $$version of OptimPackLegacy' v$$version"; \
+	echo "   git push"; \
+	echo "   git push --tags"
+
 clean:
 	$(RM) *~
 	for dir in $(SUBDIRS); do \
@@ -113,3 +120,5 @@ distclean: clean
 	    (cd $$dir; make distclean); \
 	  fi; \
 	done
+
+.PHONY: all distrib tag clean distclean

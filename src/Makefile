@@ -43,7 +43,7 @@ AR = ar
 ARFLAGS = rv
 
 LIBNAME = liboptimpacklegacy.a
-VERSION = `sed < $(srcdir)/../VERSION -e 's/ //g'`
+VERSION := $(shell grep -i -m 1 '^##* * VERSION  *[0-9.][0-9.]*' < ../NEWS.md | sed -e 's/^[^0-9]*\([0-9.]*\).*/\1/')
 OBJS = opl_algebra.o opl_lnsrch.o opl_utils.o opl_vmlmb.o
 
 all: $(LIBNAME)
