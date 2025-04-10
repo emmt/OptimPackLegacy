@@ -1,11 +1,45 @@
-## Version 1.5.0 (2019-XX-XX)
+# User visible changes in `OptimPackLegacy`
 
-* A Python interface to VMLM-B is provided (thanks to Romain Fetick).
+This page describes the most important changes in `OptimPackLegacy`.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+Adhering to [Semantic Versioning](https://semver.org/spec) is a work in progress.
+
+## Unreleased
 
 * Array dimensions and indices are now `long` by default.
 
 * Compilation and installation is much easier thanks to GNU-autoconf tools.
 
+## Version 1.4.2 (2022-03-26)
+
+## Changed
+
+* New accessors for fields `m` and `n`.
+* In Yorick `opl_vmlmb`: The workspace `ws` is passed to the `viewer`.
+* In Yorick `opl_vmlmb`: If `extra` is unspecified, `fg` is given instead to
+  `printer` and `viewer`. This is useful if the objective function is a closure
+  or a callable object with embedded data (e.g. a hash table).
+
+## Version 1.4.1 (2021-06-28)
+
+## Added
+
+* New Python interface initiated by Romain Fetick.
+* In Python interface: Add high level interface to VMLM-B algorithm.
+
+## Changed
+
+* Use the Euclidean norm to detect no variables or gradient change.
+* In Yorick interface: CPU time replace by WALL time.
+
+## Fixed
+
+* In Yorick interface: Avoid modifying the initial solution `x0`.
+* In MATLAB interface: `task` wrongly assumed to be a 16-bit integer.
+* In Python interface: Many fixes to the proposed Python support.
+* In Yorick interface: Fix repeated printing of information when `maxeval = 1`.
 
 ## Version 1.4.0 (2017-01-10)
 
@@ -15,7 +49,7 @@
   simplifies the use of VMLMB both in C and in other programming languages
   and add flexibility for very large problems.
 
-* In case of early stopping (i.e., during a line search), it is now posible to
+* In case of early stopping (i.e., during a line search), it is now possible to
   restore the variables at the start of the line search.  This is expected to
   be nearly the best ones so far.
 
